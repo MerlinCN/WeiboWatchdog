@@ -1,1 +1,1 @@
-python3 Src/main.py
+nohup python3.9 Src/main.py &
