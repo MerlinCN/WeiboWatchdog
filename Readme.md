@@ -4,7 +4,5 @@
 
 例子：
 
-https://weibo.com/u/6113028329
-
 欢迎star
 
