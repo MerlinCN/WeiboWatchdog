@@ -194,7 +194,8 @@ if __name__ == '__main__':
         for oPost in wd.thisPagePost.values():
             if oPost.isOriginPost() and len(oPost.images) >= 3:
                 wd.repost(oPost)
-            elif not oPost.isOriginPost() and len(oPost.originPost.images) >= 6:
+            elif not oPost.isOriginPost() and len(oPost.originPost.images) >= 9:
                 wd.repost(oPost.originPost)
         interval = random.randint(10, 20)
+        wd.logger.info("Heartbeat")
         time.sleep(interval)
