@@ -16,7 +16,7 @@ class WeiboDog:
     def __init__(self):
         self.logger = getLogger()
         self.mainSession = requests.session()
-        self.conn = sqlite3.connect("../history.db")
+        self.conn = sqlite3.connect("history.db")
         self.header = headers_raw_to_dict(b'''
         accept: application/json, text/plain, */*
 accept-encoding: gzip, deflate, br
