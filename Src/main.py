@@ -1,5 +1,7 @@
+import json
 import os
 import random
+import re
 import sqlite3
 import time
 from typing import Dict
@@ -146,11 +148,23 @@ x-xsrf-token: 1d1b9c
             else:
                 self.logger.info(f'转发微博{mid}失败 {r.text}')
                 return False
-        
+
         except Exception as e:
             self.logger.error(r.text)
             self.logger.error(e)
-    
+
+    def update_detail(self, oPost: CPost):
+        url = f"https://m.weibo.cn/{oPost.userUid}/{oPost.uid}?"
+        r = self.mainSession.get(url, headers=self.header)
+        try:
+            dDetail = json.loads(re.findall(r'(?<=render_data = \[)[\s\S]*(?=\]\[0\])', r.text)[0])
+            if "pics" in dDetail["status"]:
+                oPost.images = [d['large']['url'] for d in dDetail["status"]["pics"]]
+            oPost.text = dDetail["status"]["text"]
+        except Exception as e:
+            self.logger.error(r.text)
+            self.logger.error(e)
+
     def __del__(self):
         self.mainSession.close()
         handlers = self.logger.handlers[:]
@@ -158,7 +172,7 @@ x-xsrf-token: 1d1b9c
             handler.close()
             self.logger.removeHandler(handler)
         self.conn.close()
-    
+
     def dump_post(self, oPost: CPost):
         '''
         保存微博文章和图片 todo 异步下载
@@ -169,13 +183,14 @@ x-xsrf-token: 1d1b9c
         if not os.path.exists(rootPath):
             os.makedirs(rootPath)
         contextName = f"{rootPath}/{oPost.uid}.txt"
-        
+        if oPost.Text().find("全文") > 0 or len(oPost.images) >= 9:
+            self.update_detail(oPost)
         with open(contextName, 'w', encoding="utf8") as f:
             f.write(f"{oPost.userName}\n")
             f.write(f"{oPost.createdTime}\n")
             f.write(oPost.Text())
         self.logger.info(f"保存微博{oPost.uid}内容成功")
-        
+    
         for idx, image in enumerate(oPost.images):
             try:
                 imageName = image.split('/').pop()
