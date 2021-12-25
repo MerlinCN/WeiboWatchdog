@@ -81,9 +81,6 @@ x-xsrf-token: 1d1b9c
         return header
     
     def add_ref(self, value):
-        header = self.get_header()
-        header["referer"] = value
-        
         return self.add_header_param("referer", value)
     
     def get_st(self) -> tuple[str, int]:  # st是转发微博post必须的参数

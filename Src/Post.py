@@ -66,5 +66,6 @@ class CPost:
     def Text(self) -> str:
         hp = CPostTextParser()
         text = hp.feed(self.text)
+        text.replace("\n\n", "\n")
         hp.close()
         return text
