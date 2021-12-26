@@ -1,9 +1,9 @@
-from Config import *
 from typing import Dict
 import requests
+from Config import *
 
 
-def headers_raw_to_dict(headers_raw: bytes) -> Dict[str:str]:
+def headers_raw_to_dict(headers_raw: bytes) -> Dict[str,str]:
     """
     复制浏览器中的header
     """
