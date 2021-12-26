@@ -10,15 +10,16 @@ import requests
 
 from Logger import getLogger
 from Post import CPost
-from Util import headers_raw_to_dict, readCookies
+from Util import headers_raw_to_dict, readCookies, rasieACall
 
 
 class WeiboDog:
-    
+
     def __init__(self):
         self.logger = getLogger()
         self.mainSession = requests.session()
         self.conn = sqlite3.connect("history.db")
+        self.header: Dict[str:str]
         self.header = headers_raw_to_dict(b'''
         accept: application/json, text/plain, */*
 accept-encoding: gzip, deflate, br
@@ -36,13 +37,13 @@ user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML,
 x-requested-with: XMLHttpRequest
 x-xsrf-token: 1d1b9c
         ''' % readCookies())
-        
+
         self.cookies = self.header["cookie"]
         self.thisPagePost: Dict[int, CPost] = {}
         self.st, self.uid = self.get_st()
-        
+
         self.initConn()
-    
+
     def initConn(self):
         cursor = self.conn.cursor()
         cursor.execute('''
@@ -52,8 +53,8 @@ x-xsrf-token: 1d1b9c
 );''')
         cursor.close()
         self.conn.commit()
-    
-    def updateHistory(self, mid):
+
+    def updateHistory(self, mid: int) -> Dict[str:str]:
         cursor = self.conn.cursor()
         cursor.execute(f'''
         insert into history (mid) values ({mid});
@@ -61,28 +62,29 @@ x-xsrf-token: 1d1b9c
         cursor.close()
         self.conn.commit()
         self.logger.info(f"转发{mid}历史存库成功")
-    
-    def isInHistory(self, mid):
+
+    def isInHistory(self, mid: int) -> bool:
+
         cursor = self.conn.cursor()
         cursor.execute(f'''
         select * from history where mid = {mid};
         ''')
-        
+
         values = cursor.fetchall()
         cursor.close()
         return len(values) > 0
-    
-    def get_header(self):
+
+    def get_header(self) -> Dict[str:str]:
         return self.header
-    
-    def add_header_param(self, key, value):
+
+    def add_header_param(self, key: str, value: str) -> Dict[str:str]:
         header = self.get_header()
         header[key] = value
         return header
-    
-    def add_ref(self, value):
+
+    def add_ref(self, value: str) -> Dict[str:str]:
         return self.add_header_param("referer", value)
-    
+
     def get_st(self) -> tuple[str, int]:  # st是转发微博post必须的参数
         url = "https://m.weibo.cn/api/config"
         header = self.add_ref(url)
@@ -94,16 +96,15 @@ x-xsrf-token: 1d1b9c
         st = data["data"]["st"]
         uid = int(data['data']['uid'])
         return st, uid
-    
+
     def refeshToken(self):
         st, _ = self.get_st()
         self.header["x-xsrf-token"] = st
         return self.header
-    
+
     def refreshPage(self):
         '''
         刷新主页
-        :return:
         '''
         url = "https://m.weibo.cn/feed/friends?"
         header = self.add_ref(url)
@@ -119,13 +120,13 @@ x-xsrf-token: 1d1b9c
             self.logger.error(e)
             time.sleep(10)
             self.refreshPage()
-    
+
     def repost(self, oPost: CPost):
         st, _ = self.get_st()
         url = "https://m.weibo.cn/api/statuses/repost"
         content = "转发微博"
         mid = oPost.uid
-        
+
         if oPost.onlyFans:
             self.logger.info(f"微博{mid} 仅粉丝可见，不可转载")
             return
@@ -173,8 +174,6 @@ x-xsrf-token: 1d1b9c
     def dump_post(self, oPost: CPost):
         '''
         保存微博文章和图片 todo 异步下载
-        :param oPost:
-        :return:
         '''
         rootPath = f"Data/{oPost.userUid}/{oPost.uid}"
         if not os.path.exists(rootPath):
@@ -187,7 +186,7 @@ x-xsrf-token: 1d1b9c
             f.write(f"{oPost.createdTime}\n")
             f.write(oPost.Text())
         self.logger.info(f"保存微博{oPost.uid}内容成功")
-    
+
         for idx, image in enumerate(oPost.images):
             try:
                 imageName = image.split('/').pop()
@@ -202,12 +201,16 @@ x-xsrf-token: 1d1b9c
 if __name__ == '__main__':
     wd = WeiboDog()
     while 1:
-        wd.refreshPage()
-        for oPost in wd.thisPagePost.values():
-            if oPost.isOriginPost() and len(oPost.images) >= 3:
-                wd.repost(oPost)
-            elif not oPost.isOriginPost() and len(oPost.originPost.images) >= 9:
-                wd.repost(oPost.originPost)
-        interval = random.randint(10, 20)
-        wd.logger.info("Heartbeat")
-        time.sleep(interval)
+        try:
+            wd.refreshPage()
+            for oPost in wd.thisPagePost.values():
+                if oPost.isOriginPost() and len(oPost.images) >= 3:
+                    wd.repost(oPost)
+                elif not oPost.isOriginPost() and len(oPost.originPost.images) >= 9:
+                    wd.repost(oPost.originPost)
+            interval = random.randint(10, 20)
+            wd.logger.info("Heartbeat")
+            time.sleep(interval)
+        except Exception as e:
+            wd.logger.error(e)
+            rasieACall(e)
