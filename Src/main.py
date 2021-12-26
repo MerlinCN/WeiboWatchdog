@@ -184,7 +184,9 @@ x-xsrf-token: 1d1b9c
         with open(contextName, 'w', encoding="utf8") as f:
             f.write(f"{oPost.userName}\n")
             f.write(f"{oPost.createdTime}\n")
-            f.write(oPost.Text())
+            f.write(oPost.Text() + '\n')
+            if oPost.video:
+                f.write(oPost.video)
         self.logger.info(f"保存微博{oPost.uid}内容成功")
 
         for idx, image in enumerate(oPost.images):
@@ -206,8 +208,8 @@ if __name__ == '__main__':
             for oPost in wd.thisPagePost.values():
                 if oPost.isOriginPost() and len(oPost.images) >= 3:
                     wd.repost(oPost)
-                elif not oPost.isOriginPost() and len(oPost.originPost.images) >= 9:
-                    wd.repost(oPost.originPost)
+                elif oPost.isOriginPost() and oPost.video:
+                    wd.repost(oPost)
             interval = random.randint(10, 20)
             wd.logger.info("Heartbeat")
             time.sleep(interval)

@@ -5,23 +5,23 @@ from typing import Union
 class CPostTextParser(HTMLParser):
     def __init__(self):
         super(CPostTextParser, self).__init__()
-        
+
         self.postText: str = ""
-    
+
     def handle_starttag(self, tag: str, attrs):
         if tag == "br":
             self.postText += "\n"
         # print("Encountered a start tag:", tag)
-    
+
     def handle_endtag(self, tag: str):
         if tag == "br":
             self.postText += "\n"
         # print("Encountered an end tag :", tag)
-    
+
     def handle_data(self, data: str):
         self.postText += data
         # print("Encountered some data  :", data)
-    
+
     def feed(self, data) -> str:
         super(CPostTextParser, self).feed(data)
         return self.postText
@@ -45,13 +45,15 @@ class CPost:
             # 挺诡异的就是有的video没有urls属性，情况少见
             videoUrl = list(dPageInfo['urls'].values())[0]
             self.video: str = videoUrl  # 视频链接
-        
+        else:
+            self.video = ""
+
         self.originPost: Union[CPost, None]
         if dPost.get("retweeted_status", {}) and dPost.get("retweeted_status", {}).get("user"):
             self.originPost: Union[CPost, None] = CPost(dPost["retweeted_status"])  # 转发的原博
         else:
             self.originPost: Union[CPost, None] = None
-    
+
     def isOriginPost(self) -> bool:
         """
         是否是原创微博
@@ -62,7 +64,7 @@ class CPost:
             return True
         else:
             return False
-    
+
     def Text(self) -> str:
         hp = CPostTextParser()
         text = hp.feed(self.text)
