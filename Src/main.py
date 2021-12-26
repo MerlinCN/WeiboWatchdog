@@ -19,7 +19,7 @@ class WeiboDog:
         self.logger = getLogger()
         self.mainSession = requests.session()
         self.conn = sqlite3.connect("history.db")
-        self.header: Dict[str:str]
+        self.header: Dict[str,str]
         self.header = headers_raw_to_dict(b'''
         accept: application/json, text/plain, */*
 accept-encoding: gzip, deflate, br
@@ -54,7 +54,7 @@ x-xsrf-token: 1d1b9c
         cursor.close()
         self.conn.commit()
 
-    def updateHistory(self, mid: int) -> Dict[str:str]:
+    def updateHistory(self, mid: int) -> Dict[str,str]:
         cursor = self.conn.cursor()
         cursor.execute(f'''
         insert into history (mid) values ({mid});
@@ -74,15 +74,15 @@ x-xsrf-token: 1d1b9c
         cursor.close()
         return len(values) > 0
 
-    def get_header(self) -> Dict[str:str]:
+    def get_header(self) -> Dict[str,str]:
         return self.header
 
-    def add_header_param(self, key: str, value: str) -> Dict[str:str]:
+    def add_header_param(self, key: str, value: str) -> Dict[str,str]:
         header = self.get_header()
         header[key] = value
         return header
 
-    def add_ref(self, value: str) -> Dict[str:str]:
+    def add_ref(self, value: str) -> Dict[str,str]:
         return self.add_header_param("referer", value)
 
     def get_st(self) -> tuple[str, int]:  # st是转发微博post必须的参数
