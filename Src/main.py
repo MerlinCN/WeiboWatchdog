@@ -10,16 +10,16 @@ import requests
 
 from Logger import getLogger
 from Post import CPost
-from Util import headers_raw_to_dict, readCookies, rasieACall, sp_user
+from Util import headers_raw_to_dict, readCookies, rasieACall
 
 
 class WeiboDog:
-    
+
     def __init__(self):
         self.logger = getLogger()
         self.mainSession = requests.session()
         self.conn = sqlite3.connect("history.db")
-        self.header: Dict[str, str]
+        self.header: Dict[str,str]
         self.header = headers_raw_to_dict(b'''
         accept: application/json, text/plain, */*
 accept-encoding: gzip, deflate, br
@@ -37,13 +37,13 @@ user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML,
 x-requested-with: XMLHttpRequest
 x-xsrf-token: 1d1b9c
         ''' % readCookies())
-        
+
         self.cookies = self.header["cookie"]
         self.thisPagePost: Dict[int, CPost] = {}
         self.st, self.uid = self.get_st()
-        
+
         self.initConn()
-    
+
     def initConn(self):
         cursor = self.conn.cursor()
         cursor.execute('''
@@ -54,7 +54,7 @@ x-xsrf-token: 1d1b9c
         cursor.close()
         self.conn.commit()
 
-    def updateHistory(self, mid: int) -> Dict[str, str]:
+    def updateHistory(self, mid: int) -> Dict[str,str]:
         cursor = self.conn.cursor()
         cursor.execute(f'''
         insert into history (mid) values ({mid});
@@ -64,27 +64,27 @@ x-xsrf-token: 1d1b9c
         self.logger.info(f"转发{mid}历史存库成功")
 
     def isInHistory(self, mid: int) -> bool:
-    
+
         cursor = self.conn.cursor()
         cursor.execute(f'''
         select * from history where mid = {mid};
         ''')
-    
+
         values = cursor.fetchall()
         cursor.close()
         return len(values) > 0
 
-    def get_header(self) -> Dict[str, str]:
+    def get_header(self) -> Dict[str,str]:
         return self.header
 
-    def add_header_param(self, key: str, value: str) -> Dict[str, str]:
+    def add_header_param(self, key: str, value: str) -> Dict[str,str]:
         header = self.get_header()
         header[key] = value
         return header
 
-    def add_ref(self, value: str) -> Dict[str, str]:
+    def add_ref(self, value: str) -> Dict[str,str]:
         return self.add_header_param("referer", value)
-    
+
     def get_st(self) -> tuple[str, int]:  # st是转发微博post必须的参数
         url = "https://m.weibo.cn/api/config"
         header = self.add_ref(url)
@@ -96,12 +96,12 @@ x-xsrf-token: 1d1b9c
         st = data["data"]["st"]
         uid = int(data['data']['uid'])
         return st, uid
-    
+
     def refeshToken(self):
         st, _ = self.get_st()
         self.header["x-xsrf-token"] = st
         return self.header
-    
+
     def refreshPage(self):
         '''
         刷新主页
@@ -118,20 +118,19 @@ x-xsrf-token: 1d1b9c
         except Exception as e:
             self.logger.error(r.text)
             self.logger.error(e)
-            time.sleep(30)
+            time.sleep(10)
             self.refreshPage()
-    
+
     def repost(self, oPost: CPost):
         st, _ = self.get_st()
         url = "https://m.weibo.cn/api/statuses/repost"
         content = "转发微博"
         mid = oPost.uid
-        if self.isInHistory(mid):
-            return
+
         if oPost.onlyFans:
             self.logger.info(f"微博{mid} 仅粉丝可见，不可转载")
-            self.updateHistory(mid)
-            self.dump_post(oPost)
+            return
+        if self.isInHistory(mid):
             return
         data = {"id": mid, "content": content, "mid": mid, "st": st, "_spr": "screen:2560x1440"}
         # 这里一定要加referer， 不加会变成不合法的请求
@@ -143,7 +142,6 @@ x-xsrf-token: 1d1b9c
                 self.logger.info(f'转发微博{mid}成功')
                 self.updateHistory(mid)
                 self.dump_post(oPost)
-                self.logger.info(f'保存微博{mid}成功')
                 return True
             else:
                 self.logger.info(f'转发微博{mid}失败 {r.text}')
@@ -187,12 +185,9 @@ x-xsrf-token: 1d1b9c
             f.write(f"{oPost.userName}\n")
             f.write(f"{oPost.createdTime}\n")
             f.write(oPost.Text() + '\n')
-            for livePhoto in oPost.livePhotos:
-                f.write(livePhoto + '\n')
             if oPost.video:
                 f.write(oPost.video)
-
-        self.logger.info(f"保存微博userid = {oPost.userUid} name = {oPost.userName} mid = {oPost.uid}内容成功")
+        self.logger.info(f"保存微博{oPost.uid}内容成功")
 
         for idx, image in enumerate(oPost.images):
             try:
@@ -207,7 +202,6 @@ x-xsrf-token: 1d1b9c
 
 if __name__ == '__main__':
     wd = WeiboDog()
-    rasieACall("启动成功")
     while 1:
         try:
             wd.refreshPage()
@@ -216,10 +210,6 @@ if __name__ == '__main__':
                     wd.repost(oPost)
                 elif oPost.isOriginPost() and oPost.video:
                     wd.repost(oPost)
-                elif not oPost.isOriginPost():
-                    lSp = sp_user()  # 只转发别人微博的博主
-                    if oPost.userUid in lSp and len(oPost.originPost.images) >= 3:
-                        wd.repost(oPost.originPost)
             interval = random.randint(10, 20)
             wd.logger.info("Heartbeat")
             time.sleep(interval)
