@@ -1,1 +1,3 @@
 Cookies = b""
+BarkKey = ""
+SpUser = []
