@@ -53,6 +53,7 @@ class CPost:
             self.originPost: Union[CPost, None] = CPost(dPost["retweeted_status"])  # 转发的原博
         else:
             self.originPost: Union[CPost, None] = None
+        self.livePhotos: list[str] = dPost.get("live_photo", [])
 
     def isOriginPost(self) -> bool:
         """
