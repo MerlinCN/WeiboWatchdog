@@ -45,12 +45,15 @@ class CPost:
             # 挺诡异的就是有的video没有urls属性，情况少见
             videoUrl = list(dPageInfo['urls'].values())[0]
             self.video: str = videoUrl  # 视频链接
+        else:
+            self.video = ""
         
         self.originPost: Union[CPost, None]
         if dPost.get("retweeted_status", {}) and dPost.get("retweeted_status", {}).get("user"):
             self.originPost: Union[CPost, None] = CPost(dPost["retweeted_status"])  # 转发的原博
         else:
             self.originPost: Union[CPost, None] = None
+        self.livePhotos: list[str] = dPost.get("live_photo", [])
     
     def isOriginPost(self) -> bool:
         """
