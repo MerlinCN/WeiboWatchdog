@@ -1,8 +1,7 @@
-import json
 import os
 import random
-import re
 import sqlite3
+import sys
 import time
 from typing import Dict
 
@@ -106,8 +105,10 @@ x-xsrf-token: 1d1b9c
         '''
         刷新主页
         '''
+        st, _ = self.get_st()
         url = "https://m.weibo.cn/feed/friends?"
-        header = self.add_ref(url)
+        header = self.add_ref("https://m.weibo.cn/")
+        self.header["x-xsrf-token"] = st
         r = self.mainSession.get(url, headers=header)
         data = r.json()
         self.thisPagePost: Dict[int, CPost] = {}
@@ -120,49 +121,86 @@ x-xsrf-token: 1d1b9c
             self.logger.error(e)
             time.sleep(30)
             self.refreshPage()
-    
+
+    def like(self, oPost: CPost) -> bool:
+        st, _ = self.get_st()
+        mid = oPost.uid
+        url = "https://m.weibo.cn/api/attitudes/create"
+        data = {"id": mid, "attitude": "heart", "st": st, "_spr": "screen:2560x1440"}
+        self.add_ref(f"https://m.weibo.cn")
+        self.header["x-xsrf-token"] = st
+        r = self.mainSession.post(url, data=data, headers=self.header)
+        try:
+            if r.json().get("ok") == 1:
+                self.logger.info(f'点赞{mid}成功')
+                return True
+            else:
+                self.logger.error(f'点赞{mid}失败')
+                return False
+        except Exception as e:
+            self.logger.error(r.json())
+            self.logger.error(e)
+
     def repost(self, oPost: CPost):
         st, _ = self.get_st()
         url = "https://m.weibo.cn/api/statuses/repost"
         content = "转发微博"
         mid = oPost.uid
         if self.isInHistory(mid):
-            return
+            return False
         if oPost.onlyFans:
             self.logger.info(f"微博{mid} 仅粉丝可见，不可转载")
             self.updateHistory(mid)
             self.dump_post(oPost)
-            return
+            return False
         data = {"id": mid, "content": content, "mid": mid, "st": st, "_spr": "screen:2560x1440"}
         # 这里一定要加referer， 不加会变成不合法的请求
         self.add_ref(f"https://m.weibo.cn/compose/repost?id={mid}")
-        self.refeshToken()
+        self.header["x-xsrf-token"] = st
         r = self.mainSession.post(url, data=data, headers=self.header)
         try:
             if r.json().get("ok") == 1:
-                self.logger.info(f'转发微博{mid}成功')
+                self.logger.info(f'转发微博 userid = {oPost.userUid} name = {oPost.userName} mid = {oPost.uid} 成功')
                 self.updateHistory(mid)
+                self.like(oPost)
                 self.dump_post(oPost)
                 self.logger.info(f'保存微博{mid}成功')
                 return True
             else:
-                self.logger.info(f'转发微博{mid}失败 {r.text}')
+                err = r.json()
+                error_type = err["error_type"]
+                self.logger.error(
+                    f'转发微博 userid = {oPost.userUid} name = {oPost.userName} mid = {oPost.uid} 失败 \n {err["msg"]} \n {r.json()}')
+                rasieACall(f'转发微博{mid}失败 {err["msg"]}')
+                if error_type == "captcha":
+                    sys.exit(-1)
                 return False
 
         except Exception as e:
             self.logger.error(r.text)
             self.logger.error(e)
+    
+        interval = random.randint(5, 10)
+        time.sleep(interval)
 
-    def update_detail(self, oPost: CPost):
-        url = f"https://m.weibo.cn/{oPost.userUid}/{oPost.uid}?"
+    def update_detail(self, oPost: CPost) -> bool:
+        mid = oPost.uid
+        url = f"https://m.weibo.cn/statuses/extend?id={mid}"
+        st, _ = self.get_st()
+        self.add_ref(f"https://m.weibo.cn/status/{mid}")
+        self.header["x-xsrf-token"] = st
         r = self.mainSession.get(url, headers=self.header)
+        responseJson = r.json()
         try:
-            dDetail = json.loads(re.findall(r'(?<=render_data = \[)[\s\S]*(?=\]\[0\])', r.text)[0])
-            if "pics" in dDetail["status"]:
-                oPost.images = [d['large']['url'] for d in dDetail["status"]["pics"]]
-            oPost.text = dDetail["status"]["text"]
+            if responseJson.get("ok") == 1:
+                self.logger.info(f'更新{mid}全文成功')
+                oPost.text = responseJson["data"]["longTextContent"]
+                return True
+            else:
+                self.logger.error(f'更新{mid}全文失败')
+                return False
         except Exception as e:
-            self.logger.error(r.text)
+            self.logger.error(responseJson)
             self.logger.error(e)
 
     def __del__(self):
@@ -181,7 +219,7 @@ x-xsrf-token: 1d1b9c
         if not os.path.exists(rootPath):
             os.makedirs(rootPath)
         contextName = f"{rootPath}/{oPost.uid}.txt"
-        if oPost.Text().find("全文") > 0 or len(oPost.images) >= 9:
+        if oPost.Text().find("全文") > 0:
             self.update_detail(oPost)
         with open(contextName, 'w', encoding="utf8") as f:
             f.write(f"{oPost.userName}\n")
@@ -192,7 +230,7 @@ x-xsrf-token: 1d1b9c
             if oPost.video:
                 f.write(oPost.video)
 
-        self.logger.info(f"保存微博userid = {oPost.userUid} name = {oPost.userName} mid = {oPost.uid}内容成功")
+        self.logger.info(f"保存微博 mid = {oPost.uid} 内容成功")
 
         for idx, image in enumerate(oPost.images):
             try:
@@ -220,7 +258,8 @@ if __name__ == '__main__':
                     lSp = sp_user()  # 只转发别人微博的博主
                     if oPost.userUid in lSp and len(oPost.originPost.images) >= 3:
                         wd.repost(oPost.originPost)
-            interval = random.randint(10, 20)
+    
+            interval = random.randint(50, 60)
             wd.logger.info("Heartbeat")
             time.sleep(interval)
         except Exception as e:
