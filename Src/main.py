@@ -3,7 +3,7 @@ import random
 import sqlite3
 import time
 from datetime import datetime
-from typing import Dict
+from typing import Dict, Tuple
 
 import ddddocr
 import requests
@@ -85,8 +85,8 @@ x-xsrf-token: 1d1b9c
 
     def add_ref(self, value: str) -> Dict[str, str]:
         return self.add_header_param("referer", value)
-    
-    def get_st(self) -> tuple[str, int]:  # st是转发微博post必须的参数
+
+    def get_st(self) -> Tuple[str, int]:  # st是转发微博post必须的参数
         url = "https://m.weibo.cn/api/config"
         header = self.add_ref(url)
         r = self.mainSession.get(url, headers=header)
@@ -217,7 +217,7 @@ x-xsrf-token: 1d1b9c
                 else:
                     time.sleep(30)
                 return False
-    
+
         except Exception as e:
             self.logger.error(r.text)
             self.logger.error(e)
