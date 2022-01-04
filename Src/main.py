@@ -10,13 +10,15 @@ import requests
 
 from Logger import getLogger
 from Post import CPost
-from Util import headers_raw_to_dict, readCookies, rasieACall, sp_user
+from Util import headers_raw_to_dict, readCookies, raiseACall, sp_user
+from human_detection import CAPI
 
 
 class WeiboDog:
     
     def __init__(self):
         self.logger = getLogger()
+        self.ai_api = CAPI()
         self.mainSession = requests.session()
         self.conn = sqlite3.connect("history.db")
         self.header: Dict[str, str]
@@ -37,14 +39,14 @@ user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML,
 x-requested-with: XMLHttpRequest
 x-xsrf-token: 1d1b9c
         ''' % readCookies())
-
+        
         self.cookies = self.header["cookie"]
         self.thisPagePost: Dict[int, CPost] = {}
         self.thisRecommendPagePost: Dict[int, CPost] = {}
         self.st, self.uid = self.get_st()
-
+        
         self.initConn()
-
+    
     def initConn(self):
         cursor = self.conn.cursor()
         cursor.execute('''
@@ -54,7 +56,7 @@ x-xsrf-token: 1d1b9c
 );''')
         cursor.close()
         self.conn.commit()
-
+    
     def updateHistory(self, mid: int):
         cursor = self.conn.cursor()
         cursor.execute(f'''
@@ -63,29 +65,29 @@ x-xsrf-token: 1d1b9c
         cursor.close()
         self.conn.commit()
         self.logger.info(f"转发{mid}历史存库成功")
-
-    def isInHistory(self, mid: int) -> bool:
     
+    def isInHistory(self, mid: int) -> bool:
+        
         cursor = self.conn.cursor()
         cursor.execute(f'''
         select * from history where mid = {mid};
         ''')
-    
+        
         values = cursor.fetchall()
         cursor.close()
         return len(values) > 0
-
+    
     def get_header(self) -> Dict[str, str]:
         return self.header
-
+    
     def add_header_param(self, key: str, value: str) -> Dict[str, str]:
         header = self.get_header()
         header[key] = value
         return header
-
+    
     def add_ref(self, value: str) -> Dict[str, str]:
         return self.add_header_param("referer", value)
-
+    
     def get_st(self) -> Tuple[str, int]:  # st是转发微博post必须的参数
         url = "https://m.weibo.cn/api/config"
         header = self.add_ref(url)
@@ -128,7 +130,7 @@ x-xsrf-token: 1d1b9c
             self.logger.error(e)
             time.sleep(30)
             self.refreshPage()
-
+    
     def refreshRecommend(self):
         st, _ = self.get_st()
         url = "https://m.weibo.cn/api/container/getIndex?containerid=102803&openApp=0"
@@ -151,7 +153,7 @@ x-xsrf-token: 1d1b9c
             self.logger.error(e)
             time.sleep(60)
             self.refreshRecommend()
-
+    
     def like(self, oPost: CPost) -> bool:
         st, _ = self.get_st()
         mid = oPost.uid
@@ -170,7 +172,7 @@ x-xsrf-token: 1d1b9c
         except Exception as e:
             self.logger.error(r.json())
             self.logger.error(e)
-
+    
     def repost(self, oPost: CPost, extra_data=None):
         st, _ = self.get_st()
         url = "https://m.weibo.cn/api/statuses/repost"
@@ -211,7 +213,7 @@ x-xsrf-token: 1d1b9c
                     return self.repost(oPost, extra_data=data)
                 self.logger.error(
                     f'转发微博 userid = {oPost.userUid} name = {oPost.userName} mid = {oPost.uid} 失败 \n {err["msg"]} \n {r.json()}')
-                rasieACall(f'转发微博{mid}失败 {err["msg"]}')
+                raiseACall(f'转发微博{mid}失败 {err["msg"]}')
                 if errno == '20016':
                     time.sleep(60)
                 else:
@@ -221,7 +223,7 @@ x-xsrf-token: 1d1b9c
         except Exception as e:
             self.logger.error(r.text)
             self.logger.error(e)
-
+    
     def solve_captcha(self) -> str:
         nowTime = int(time.time() * 1000)
         url = f"https://m.weibo.cn/api/captcha/show?t={nowTime}"
@@ -235,7 +237,7 @@ x-xsrf-token: 1d1b9c
             self.solve_captcha()
         else:
             return result
-
+    
     def update_detail(self, oPost: CPost) -> bool:
         mid = oPost.uid
         url = f"https://m.weibo.cn/statuses/extend?id={mid}"
@@ -255,7 +257,7 @@ x-xsrf-token: 1d1b9c
         except Exception as e:
             self.logger.error(responseJson)
             self.logger.error(e)
-
+    
     def __del__(self):
         self.mainSession.close()
         handlers = self.logger.handlers[:]
@@ -263,7 +265,7 @@ x-xsrf-token: 1d1b9c
             handler.close()
             self.logger.removeHandler(handler)
         self.conn.close()
-
+    
     def dump_post(self, oPost: CPost):
         '''
         保存微博文章和图片 todo 异步下载
@@ -294,11 +296,21 @@ x-xsrf-token: 1d1b9c
             except Exception as e:
                 self.logger.error(e)
             self.logger.info(f"保存微博{oPost.uid}图片{idx + 1}成功")
+    
+    def detection(self, oPost: CPost):
+        if not oPost.thumbnail_images:
+            return False
+        for image in oPost.thumbnail_images:
+            human_num = self.ai_api.detection(image)
+            if human_num >= 1:
+                self.logger.info(f"微博 {oPost.uid} 检测到人体 {human_num}")
+                return True
+        return False
 
 
 if __name__ == '__main__':
     wd = WeiboDog()
-    rasieACall("启动成功")
+    raiseACall("启动成功")
     while 1:
         try:
             if 2 <= datetime.now().hour < 6:
@@ -309,19 +321,19 @@ if __name__ == '__main__':
             # time.sleep(5)
             # wd.refreshRecommend()
             iterDict = {**wd.thisRecommendPagePost, **wd.thisPagePost}
-            for oPost in iterDict.values():
-                if oPost.isOriginPost() and len(oPost.images) >= 3:
-                    wd.repost(oPost)
-                elif oPost.isOriginPost() and oPost.video:
-                    wd.repost(oPost)
-                elif not oPost.isOriginPost():
+            for _oPost in iterDict.values():
+                if _oPost.video:
+                    wd.repost(_oPost)
+                elif wd.detection(_oPost):
+                    wd.repost(_oPost)
+                elif not _oPost.isOriginPost():
                     lSp = sp_user()  # 只转发别人微博的博主
-                    if oPost.userUid in lSp:
-                        if len(oPost.originPost.images) >= 3 or oPost.originPost.video:
-                            wd.repost(oPost.originPost)
+                    if _oPost.userUid in lSp:
+                        if wd.detection(_oPost.originPost) or _oPost.originPost.video:
+                            wd.repost(_oPost.originPost)
             interval = random.randint(50, 60)
             wd.logger.info("Heartbeat")
             time.sleep(interval)
         except Exception as e:
             wd.logger.error(e)
-            rasieACall(e)
+            raiseACall(e)

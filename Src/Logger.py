@@ -2,12 +2,10 @@ import logging
 import logging.handlers
 import os
 import sys
-import time
 
 
-def getLogger():
+def initLogger():
     logger = logging.getLogger("WeiboDog")
-    
     s_handler = logging.StreamHandler(sys.stdout)
     s_handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(filename)s[:%(lineno)d] - %(message)s"))
     log_path = "Log"
@@ -20,12 +18,12 @@ def getLogger():
     logger.addHandler(s_handler)
     logger.addHandler(f_handler)
     logger.setLevel(logging.DEBUG)
+    setattr(logger, "isInit", True)
+
+
+def getLogger():
+    logger = logging.getLogger("WeiboDog")
+    if getattr(logger, "isInit", False) is False:
+        initLogger()
+    
     return logger
-
-
-if __name__ == '__main__':
-    logger = getLogger()
-    while 1:
-        logger.info("Test")
-        logger.error("Test")
-        time.sleep(1)

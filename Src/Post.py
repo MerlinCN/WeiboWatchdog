@@ -37,6 +37,7 @@ class CPost:
         self.createdTime: int = dPost["created_at"]  # 微博发送时间
         self.source: str = dPost["source"]  # 微博发送设备
         self.images: list[str] = [img["large"]["url"] for img in dPost.get("pics", [])]  # 微博图片
+        self.thumbnail_images: list[str] = [img["url"] for img in dPost.get("pics", [])]  # 微博图片(缩略图)
         self.extraTitle: dict[str:str] = dPost.get("title", {})  # 微博横幅
         self.onlyFans: bool = True if "仅粉丝可见" in self.extraTitle.values() else False  # 是否粉丝可见
         self.setTop: bool = True if "置顶" in self.extraTitle.values() else False  # 是否置顶

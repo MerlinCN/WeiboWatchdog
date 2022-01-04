@@ -32,7 +32,7 @@ def readCookies():
     return Config.Cookies
 
 
-def rasieACall(context):
+def raiseACall(context):
     if not getattr(Config, "BarkKey", None):
         return
     requests.get(f"https://api.day.app/{Config.BarkKey}/{context}")
@@ -42,3 +42,9 @@ def sp_user() -> List[int]:
     if not getattr(Config, "SpUser", None):
         return []
     return Config.SpUser
+
+
+def get_ai_key():
+    if not getattr(Config, "API_key", None) or getattr(Config, "SecretKey", None):
+        return "", ""
+    return Config.API_key, Config.SecretKey
