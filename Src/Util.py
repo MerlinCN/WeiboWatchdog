@@ -45,6 +45,6 @@ def sp_user() -> List[int]:
 
 
 def get_ai_key():
-    if not getattr(Config, "API_key", None) or getattr(Config, "SecretKey", None):
+    if getattr(Config, "API_key", None) is None or getattr(Config, "SecretKey", None) is None:
         return "", ""
     return Config.API_key, Config.SecretKey
