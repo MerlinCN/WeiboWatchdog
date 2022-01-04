@@ -10,7 +10,7 @@ def headers_raw_to_dict(headers_raw: bytes) -> Dict[str, str]:
     复制浏览器中的header
     """
     if headers_raw is None:
-        return None
+        raise ValueError("不能为空")
     headers = headers_raw.splitlines()
     headers_tuples = [header.split(b":", 1) for header in headers]
     

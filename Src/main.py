@@ -306,8 +306,8 @@ if __name__ == '__main__':
                 time.sleep(60)
                 continue
             wd.refreshPage()
-            time.sleep(5)
-            wd.refreshRecommend()
+            # time.sleep(5)
+            # wd.refreshRecommend()
             iterDict = {**wd.thisRecommendPagePost, **wd.thisPagePost}
             for oPost in iterDict.values():
                 if oPost.isOriginPost() and len(oPost.images) >= 3:
