@@ -55,6 +55,7 @@ class CPost:
             self.originPost: Union[CPost, None] = None
         self.livePhotos: list[str] = dPost.get("live_photo", [])
         self.isRecommend: bool = isRecommend  # 是否来自推荐
+
     def isOriginPost(self) -> bool:
         """
         是否是原创微博
