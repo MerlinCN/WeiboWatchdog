@@ -2,7 +2,6 @@ import os
 import random
 import sqlite3
 import time
-from datetime import datetime
 from typing import Dict, Tuple
 
 import ddddocr
@@ -300,7 +299,9 @@ x-xsrf-token: 1d1b9c
         if not oPost.thumbnail_images:
             return False
         for image in oPost.thumbnail_images:
-            human_num = self.ai_api.detection(image)
+            human_num, male_num = self.ai_api.detection(image, oPost.isRecommend)
+            if male_num >= 1 and oPost.isRecommend is True:
+                return False
             if human_num >= 1:
                 self.logger.info(f"微博 https://m.weibo.cn/detail/{oPost.uid} 检测到人体 {human_num}")
                 return True
@@ -314,10 +315,10 @@ if __name__ == '__main__':
     raiseACall("启动成功")
     while 1:
         try:
-            if 2 <= datetime.now().hour < 6:
-                wd.logger.info("Heartbeat without request")
-                time.sleep(60)
-                continue
+            # if 2 <= datetime.now().hour < 6:
+            #     wd.logger.info("Heartbeat without request")
+            #     time.sleep(60)
+            #     continue
             wd.refreshPage()
             # time.sleep(5)
             # wd.refreshRecommend()
