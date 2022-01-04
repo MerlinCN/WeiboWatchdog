@@ -28,7 +28,7 @@ class CPostTextParser(HTMLParser):
 
 
 class CPost:
-    def __init__(self, dPost: dict):
+    def __init__(self, dPost: dict, isRecommend=False):
         self.RawData = dPost
         self.uid: int = dPost["id"]  # 微博uid
         self.userUid: int = dPost["user"]["id"]  # 博主uid
@@ -54,7 +54,7 @@ class CPost:
         else:
             self.originPost: Union[CPost, None] = None
         self.livePhotos: list[str] = dPost.get("live_photo", [])
-
+        self.isRecommend: bool = isRecommend  # 是否来自推荐
     def isOriginPost(self) -> bool:
         """
         是否是原创微博

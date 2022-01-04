@@ -3,6 +3,7 @@ import random
 import sqlite3
 import sys
 import time
+from datetime import datetime
 from typing import Dict
 
 import requests
@@ -39,6 +40,7 @@ x-xsrf-token: 1d1b9c
 
         self.cookies = self.header["cookie"]
         self.thisPagePost: Dict[int, CPost] = {}
+        self.thisRecommendPagePost: Dict[int, CPost] = {}
         self.st, self.uid = self.get_st()
 
         self.initConn()
@@ -111,16 +113,44 @@ x-xsrf-token: 1d1b9c
         self.header["x-xsrf-token"] = st
         r = self.mainSession.get(url, headers=header)
         data = r.json()
-        self.thisPagePost: Dict[int, CPost] = {}
+        self.thisPagePost = {}
         try:
-            for dPost in data["data"]["statuses"]:
-                _oPost = CPost(dPost)
-                self.thisPagePost[_oPost.uid] = _oPost
+            if r.json().get("ok") == 1:
+                for dPost in data["data"]["statuses"]:
+                    _oPost = CPost(dPost)
+                    self.thisPagePost[_oPost.uid] = _oPost
+                return True
+            else:
+                self.logger.error(f"刷新主页失败 err = {data}")
+                return False
         except Exception as e:
-            self.logger.error(r.text)
+            self.logger.error(data)
             self.logger.error(e)
             time.sleep(30)
             self.refreshPage()
+
+    def refreshRecommend(self):
+        st, _ = self.get_st()
+        url = "https://m.weibo.cn/api/container/getIndex?containerid=102803&openApp=0"
+        header = self.add_ref("https://m.weibo.cn/")
+        self.header["x-xsrf-token"] = st
+        r = self.mainSession.get(url, headers=header)
+        data = r.json()
+        self.thisRecommendPagePost = {}
+        try:
+            if r.json().get("ok") == 1:
+                for dPost in data["data"]["cards"]:
+                    _oPost = CPost(dPost["mblog"], isRecommend=True)
+                    self.thisRecommendPagePost[_oPost.uid] = _oPost
+                return True
+            else:
+                self.logger.error(f"刷新热门失败 err = {data}")
+                return False
+        except Exception as e:
+            self.logger.error(data)
+            self.logger.error(e)
+            time.sleep(60)
+            self.refreshRecommend()
 
     def like(self, oPost: CPost) -> bool:
         st, _ = self.get_st()
@@ -160,28 +190,32 @@ x-xsrf-token: 1d1b9c
         r = self.mainSession.post(url, data=data, headers=self.header)
         try:
             if r.json().get("ok") == 1:
-                self.logger.info(f'转发微博 userid = {oPost.userUid} name = {oPost.userName} mid = {oPost.uid} 成功')
+                self.logger.info(
+                    f'转发微博 userid = {oPost.userUid} name = {oPost.userName} mid = {oPost.uid} {"来自推荐" if oPost.isOriginPost() else ""} 成功')
                 self.updateHistory(mid)
                 self.like(oPost)
                 self.dump_post(oPost)
                 self.logger.info(f'保存微博{mid}成功')
+                time.sleep(30)
                 return True
             else:
                 err = r.json()
                 error_type = err["error_type"]
+                errno = err["errno"]
                 self.logger.error(
                     f'转发微博 userid = {oPost.userUid} name = {oPost.userName} mid = {oPost.uid} 失败 \n {err["msg"]} \n {r.json()}')
                 rasieACall(f'转发微博{mid}失败 {err["msg"]}')
                 if error_type == "captcha":
                     sys.exit(-1)
+                elif errno == '20016':
+                    time.sleep(60)
+                else:
+                    time.sleep(30)
                 return False
 
         except Exception as e:
             self.logger.error(r.text)
             self.logger.error(e)
-    
-        interval = random.randint(5, 10)
-        time.sleep(interval)
 
     def update_detail(self, oPost: CPost) -> bool:
         mid = oPost.uid
@@ -248,17 +282,24 @@ if __name__ == '__main__':
     rasieACall("启动成功")
     while 1:
         try:
+            if 2 <= datetime.now().hour < 6:
+                wd.logger.info("Heartbeat without request")
+                time.sleep(60)
+                continue
             wd.refreshPage()
-            for oPost in wd.thisPagePost.values():
+            time.sleep(5)
+            wd.refreshRecommend()
+            iterDict = {**wd.thisRecommendPagePost, **wd.thisPagePost}
+            for oPost in iterDict.values():
                 if oPost.isOriginPost() and len(oPost.images) >= 3:
                     wd.repost(oPost)
                 elif oPost.isOriginPost() and oPost.video:
                     wd.repost(oPost)
                 elif not oPost.isOriginPost():
                     lSp = sp_user()  # 只转发别人微博的博主
-                    if oPost.userUid in lSp and len(oPost.originPost.images) >= 3:
-                        wd.repost(oPost.originPost)
-    
+                    if oPost.userUid in lSp:
+                        if len(oPost.originPost.images) >= 3 or oPost.originPost.video:
+                            wd.repost(oPost.originPost)
             interval = random.randint(50, 60)
             wd.logger.info("Heartbeat")
             time.sleep(interval)
