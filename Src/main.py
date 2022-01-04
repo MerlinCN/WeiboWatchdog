@@ -196,11 +196,10 @@ x-xsrf-token: 1d1b9c
         try:
             if r.json().get("ok") == 1:
                 self.logger.info(
-                    f'转发微博 userid = {oPost.userUid} name = {oPost.userName} mid = {oPost.uid} {"来自推荐" if oPost.isRecommend else ""} 成功')
+                    f'转发微博 name = {oPost.userName} https://m.weibo.cn/detail/{oPost.uid} {"来自推荐" if oPost.isRecommend else ""} 成功')
                 self.updateHistory(mid)
                 self.like(oPost)
                 self.dump_post(oPost)
-                self.logger.info(f'保存微博{mid}成功')
                 time.sleep(10)
                 return True
             else:
@@ -212,7 +211,7 @@ x-xsrf-token: 1d1b9c
                     data["_code"] = code
                     return self.repost(oPost, extra_data=data)
                 self.logger.error(
-                    f'转发微博 userid = {oPost.userUid} name = {oPost.userName} mid = {oPost.uid} 失败 \n {err["msg"]} \n {r.json()}')
+                    f'转发微博name = {oPost.userName} https://m.weibo.cn/detail/{oPost.uid}  {"来自推荐" if oPost.isRecommend else ""} 失败 \n {err["msg"]} \n {r.json()}')
                 raiseACall(f'转发微博{mid}失败 {err["msg"]}')
                 if errno == '20016':
                     time.sleep(60)
@@ -303,8 +302,10 @@ x-xsrf-token: 1d1b9c
         for image in oPost.thumbnail_images:
             human_num = self.ai_api.detection(image)
             if human_num >= 1:
-                self.logger.info(f"微博 {oPost.uid} 检测到人体 {human_num}")
+                self.logger.info(f"微博 https://m.weibo.cn/detail/{oPost.uid} 检测到人体 {human_num}")
                 return True
+            time.sleep(0.5)
+        self.logger.info(f"微博 https://m.weibo.cn/detail/{oPost.uid} 未检测到人体 ")
         return False
 
 
@@ -322,7 +323,9 @@ if __name__ == '__main__':
             # wd.refreshRecommend()
             iterDict = {**wd.thisRecommendPagePost, **wd.thisPagePost}
             for _oPost in iterDict.values():
-                if _oPost.video:
+                if wd.isInHistory(_oPost.uid):
+                    continue
+                if _oPost.video and _oPost.isRecommend is False:
                     wd.repost(_oPost)
                 elif wd.detection(_oPost):
                     wd.repost(_oPost)

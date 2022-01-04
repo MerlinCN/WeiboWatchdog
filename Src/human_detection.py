@@ -21,7 +21,7 @@ class CAPI:
         res_image = self.session.get(image_url)
         if res_image.status_code != 200:
             raiseACall(f"人体识别出错 {image_url}")
-            return 1
+            return 0
         data = {"access_token": self.access_token, "image": base64.b64encode(res_image.content)}
         res_ai = requests.post(self.detection_url, data=data, headers=self.header)
         res_ai_json = res_ai.json()
@@ -32,4 +32,4 @@ class CAPI:
             self.logger.error(res_ai_json)
             self.logger.error(e)
             raiseACall(f"人体识别出错 {res_ai_json}")
-            return 1
+            return 0
