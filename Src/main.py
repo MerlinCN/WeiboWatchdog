@@ -1,11 +1,11 @@
 import os
 import random
 import sqlite3
-import sys
 import time
 from datetime import datetime
 from typing import Dict
 
+import ddddocr
 import requests
 
 from Logger import getLogger
@@ -44,7 +44,7 @@ x-xsrf-token: 1d1b9c
         self.st, self.uid = self.get_st()
 
         self.initConn()
-    
+
     def initConn(self):
         cursor = self.conn.cursor()
         cursor.execute('''
@@ -55,7 +55,7 @@ x-xsrf-token: 1d1b9c
         cursor.close()
         self.conn.commit()
 
-    def updateHistory(self, mid: int) -> Dict[str, str]:
+    def updateHistory(self, mid: int):
         cursor = self.conn.cursor()
         cursor.execute(f'''
         insert into history (mid) values ({mid});
@@ -171,7 +171,7 @@ x-xsrf-token: 1d1b9c
             self.logger.error(r.json())
             self.logger.error(e)
 
-    def repost(self, oPost: CPost):
+    def repost(self, oPost: CPost, extra_data=None):
         st, _ = self.get_st()
         url = "https://m.weibo.cn/api/statuses/repost"
         content = "转发微博"
@@ -183,7 +183,10 @@ x-xsrf-token: 1d1b9c
             self.updateHistory(mid)
             self.dump_post(oPost)
             return False
-        data = {"id": mid, "content": content, "mid": mid, "st": st, "_spr": "screen:2560x1440"}
+        if not extra_data:
+            data = {"id": mid, "content": content, "mid": mid, "st": st, "_spr": "screen:2560x1440"}
+        else:
+            data = extra_data
         # 这里一定要加referer， 不加会变成不合法的请求
         self.add_ref(f"https://m.weibo.cn/compose/repost?id={mid}")
         self.header["x-xsrf-token"] = st
@@ -191,31 +194,47 @@ x-xsrf-token: 1d1b9c
         try:
             if r.json().get("ok") == 1:
                 self.logger.info(
-                    f'转发微博 userid = {oPost.userUid} name = {oPost.userName} mid = {oPost.uid} {"来自推荐" if oPost.isOriginPost() else ""} 成功')
+                    f'转发微博 userid = {oPost.userUid} name = {oPost.userName} mid = {oPost.uid} {"来自推荐" if oPost.isRecommend else ""} 成功')
                 self.updateHistory(mid)
                 self.like(oPost)
                 self.dump_post(oPost)
                 self.logger.info(f'保存微博{mid}成功')
-                time.sleep(30)
+                time.sleep(10)
                 return True
             else:
                 err = r.json()
                 error_type = err["error_type"]
                 errno = err["errno"]
+                if error_type == "captcha":
+                    code = self.solve_captcha()
+                    data["_code"] = code
+                    return self.repost(oPost, extra_data=data)
                 self.logger.error(
                     f'转发微博 userid = {oPost.userUid} name = {oPost.userName} mid = {oPost.uid} 失败 \n {err["msg"]} \n {r.json()}')
                 rasieACall(f'转发微博{mid}失败 {err["msg"]}')
-                if error_type == "captcha":
-                    sys.exit(-1)
-                elif errno == '20016':
+                if errno == '20016':
                     time.sleep(60)
                 else:
                     time.sleep(30)
                 return False
-
+    
         except Exception as e:
             self.logger.error(r.text)
             self.logger.error(e)
+
+    def solve_captcha(self) -> str:
+        nowTime = int(time.time() * 1000)
+        url = f"https://m.weibo.cn/api/captcha/show?t={nowTime}"
+        print(nowTime)
+        self.add_ref("https://m.weibo.cn/sw.js")
+        res = self.mainSession.get(url, headers=self.header)
+        ocr = ddddocr.DdddOcr()
+        result = ocr.classification(res.content)
+        self.logger.info("识别验证码")
+        if len(result) != 4:
+            self.solve_captcha()
+        else:
+            return result
 
     def update_detail(self, oPost: CPost) -> bool:
         mid = oPost.uid
