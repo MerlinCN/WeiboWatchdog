@@ -198,10 +198,14 @@ x-xsrf-token: 1d1b9c
         mid = oPost.uid
         if self.isInHistory(mid):
             return False
+        repostable = self.dump_post(oPost)
+        if not repostable:
+            self.logger.info(f"微博{mid}太小 不转载")
+            self.updateHistory(mid)
+            return False
         if oPost.onlyFans:
             self.logger.info(f"微博{mid} 仅粉丝可见，不可转载")
             self.updateHistory(mid)
-            self.dump_post(oPost)
             return False
         if not extra_data:
             data = {"id": mid, "content": content, "mid": mid, "st": st, "_spr": "screen:2560x1440"}
@@ -218,10 +222,9 @@ x-xsrf-token: 1d1b9c
         try:
             if r.json().get("ok") == 1:
                 self.logger.info(
-                    f'转发微博 name = {oPost.userName} https://m.weibo.cn/detail/{oPost.uid} {"来自推荐" if oPost.isRecommend else ""} 成功')
+                    f'转发微博 name = {oPost.userName} userid = {oPost.userUid} {self.postDetail(oPost)} {"来自推荐" if oPost.isRecommend else ""} 成功')
                 self.updateHistory(mid)
                 self.like(oPost)
-                self.dump_post(oPost)
                 time.sleep(10)
                 return True
             else:
@@ -231,9 +234,10 @@ x-xsrf-token: 1d1b9c
                 if error_type == "captcha":  # 需要验证码
                     code = self.solve_captcha()
                     data["_code"] = code
+                    time.sleep(5)
                     return self.repost(oPost, extra_data=data)
                 self.logger.error(
-                    f'转发微博name = {oPost.userName} https://m.weibo.cn/detail/{oPost.uid}  {"来自推荐" if oPost.isRecommend else ""} 失败 \n {err["msg"]} \n {r.json()}')
+                    f'转发微博name = {oPost.userName} {self.postDetail(oPost)}  {"来自推荐" if oPost.isRecommend else ""} 失败 \n {err["msg"]} \n {r.json()}')
                 raiseACall(f'转发微博{mid}失败 {err["msg"]}')
                 if errno == '20016':  # 转发频率过高，等一会儿就好
                     time.sleep(60)
@@ -290,14 +294,19 @@ x-xsrf-token: 1d1b9c
             handler.close()
             self.logger.removeHandler(handler)
         self.conn.close()
-    
-    def dump_post(self, oPost: CPost):
+
+    def dump_post(self, oPost: CPost) -> bool:
         '''
         保存微博文章和图片
         '''
-        rootPath = f"Data/{oPost.userUid}/{oPost.uid}"
+        rootPath = f"Data/{oPost.userName}/{oPost.uid}"
+        iSumImageSize = 0
+        iAverImageSize = 0
         if not os.path.exists(rootPath):
             os.makedirs(rootPath)
+        else:
+            self.logger.error("重复保存")
+            return True
         contextName = f"{rootPath}/{oPost.uid}.txt"
         if oPost.Text().find("全文") > 0:
             self.update_detail(oPost)
@@ -317,10 +326,20 @@ x-xsrf-token: 1d1b9c
                 imageName = image.split('/').pop()
                 res = requests.get(image)
                 with open(f"{rootPath}/{imageName}", 'wb') as f:
+                    iSumImageSize += len(res.content)
                     f.write(res.content)
             except Exception as e:
                 self.logger.error(e)
             self.logger.info(f"保存微博{oPost.uid}图片{idx + 1}成功")
+    
+        if iSumImageSize > 0:
+            iAverImageSize = iSumImageSize / len(oPost.images)
+        if iAverImageSize < 1e6 and oPost.images:
+            self.logger.info(f" {self.postDetail(oPost)} 图片过小")
+        if iAverImageSize >= 1e6 or oPost.livePhotos or oPost.video:
+            return True
+        else:
+            return False
     
     def detection(self, oPost: CPost):
         if not oPost.thumbnail_images:  # 用缩略图来做识别（API限制4M)
@@ -335,11 +354,16 @@ x-xsrf-token: 1d1b9c
             if male_num >= 1 and oPost.isRecommend is True:  # 如果走热门推荐的话就不转发有男性的
                 return False
             if human_num >= 1:
-                self.logger.info(f"微博 https://m.weibo.cn/detail/{oPost.uid} 检测到人体 {human_num}")
+                self.logger.info(f"微博 {self.postDetail(oPost)} 检测到人体 {human_num}")
                 return True
             time.sleep(0.5)
-        self.logger.info(f"微博 https://m.weibo.cn/detail/{oPost.uid} 未检测到人体 ")
+
+        self.logger.info(f"微博 {self.postDetail(oPost)} 未检测到人体 ")
         return False
+
+    @staticmethod
+    def postDetail(oPost: CPost) -> str:
+        return f"https://m.weibo.cn/detail/{oPost.uid}"
 
 
 if __name__ == '__main__':
