@@ -38,3 +38,17 @@
 
 8. 心跳日志
 
+## 配置项
+
+> 配置放在Config.py里
+
+`Cookies`：（byte）在浏览器登录后复制过来就好
+
+`BarkKey`：（字符串）一个告警App [项目链接](https://github.com/Finb/Bark)
+
+`SpUser`：（列表）特殊用户的uid的列表（只转发别人微博的博主）
+
+`API_key`：（字符串）百度云APIKey
+
+`SecretKey`：（字符串）百度云SecretKey
+
