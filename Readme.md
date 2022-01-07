@@ -16,7 +16,7 @@
 - [x] 人体识别再转发（百度API)
 - [x] 解决验证码 see->[ddddOCR](https://github.com/sml2h3/ddddocr)
 - [ ] livephoto截取最后一帧
-- [ ] 评论互动
+- [x] 评论互动
 - [ ] 私信互动
 - [ ] 自动回复
 
