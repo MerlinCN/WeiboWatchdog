@@ -3,5 +3,7 @@
 *.pyc
 __pycache__
 Data/*
+Video/*
 Log/*
 *.out
+.vscode
