@@ -3,15 +3,15 @@ from typing import Tuple
 
 import requests
 
-from Logger import getLogger
-from Util import get_ai_key, raiseACall
+from MyLogger import getLogger
+from Util import readAIKey, raiseACall
 
 
-class CAPI:  # 百度人体识别API
+class CBaiduAPI:  # 百度人体识别API
     def __init__(self):
         self.session = requests.session()
-        self.logger = getLogger()
-        api_key, secrets_key = get_ai_key()
+        self.logger = getLogger("MainLoop")
+        api_key, secrets_key = readAIKey()
         root_key = f"https://aip.baidubce.com/oauth/2.0/token?grant_type=client_credentials&client_id={api_key}&client_secret={secrets_key}"
         root_res = self.session.get(root_key)
         self.access_token = root_res.json()["access_token"]

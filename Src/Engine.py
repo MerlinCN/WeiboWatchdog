@@ -1,28 +1,29 @@
+import json
 import os
 import random
+import re
 import sqlite3
 import time
-import traceback
-from typing import Dict, Tuple, Union
+from typing import Dict, Union, Tuple
 
 import ddddocr
 import requests
 
-from Logger import getLogger
+from AITool import CBaiduAPI
+from MyLogger import getLogger
 from Post import CPost
-from Util import headers_raw_to_dict, readCookies, raiseACall, sp_user
-from human_detection import CAPI
+from Util import byte2Headers, readCookies, raiseACall
 
 
-class WeiboDog:
+class SpiderEngine:
     
-    def __init__(self):
-        self.logger = getLogger()
-        self.ai_api = CAPI()
+    def __init__(self, loggerName: str):
+        self.logger = getLogger(loggerName)
+        self.oAIAPI = CBaiduAPI()
         self.mainSession = requests.session()
         self.conn = sqlite3.connect("history.db")
         self.header: Dict[str, Union[str, int]]
-        self.header = headers_raw_to_dict(b'''
+        self.header = byte2Headers(b'''
         accept: application/json, text/plain, */*
 accept-encoding: gzip, deflate, br
 accept-language: zh-CN,zh;q=0.9
@@ -39,14 +40,14 @@ user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML,
 x-requested-with: XMLHttpRequest
 x-xsrf-token: 1d1b9c
         ''' % readCookies())
-
+        
         self.cookies = self.header["cookie"]
         self.thisPagePost: Dict[int, CPost] = {}  # 主页的微博
         self.thisRecommendPagePost: Dict[int, CPost] = {}  # 热门推荐的微博
         self.st, self.uid = self.get_st()
-
+        
         self.initConn()
-
+    
     def initConn(self):
         """
         初始化表
@@ -63,7 +64,7 @@ x-xsrf-token: 1d1b9c
     );''')
         cursor.close()
         self.conn.commit()
-
+    
     def updateHistory(self, mid: int):
         """
         更新转发历史
@@ -75,7 +76,7 @@ x-xsrf-token: 1d1b9c
         cursor.close()
         self.conn.commit()
         self.logger.info(f"转发历史存库成功")
-
+    
     def updateScanHistory(self, mid: int):
         """
         更新扫描历史
@@ -84,7 +85,7 @@ x-xsrf-token: 1d1b9c
         cursor.execute(f"insert into ScanHistory (mid) values ({mid});")
         cursor.close()
         self.conn.commit()
-
+    
     def isInHistory(self, mid: int) -> bool:
         """
         是否已经转发
@@ -96,11 +97,11 @@ x-xsrf-token: 1d1b9c
         cursor.execute(f'''
         select * from history where mid = {mid};
         ''')
-
+        
         values = cursor.fetchall()
         cursor.close()
         return len(values) > 0
-
+    
     def isInScanHistory(self, mid: int) -> bool:
         """
         是否已经扫描
@@ -115,18 +116,18 @@ x-xsrf-token: 1d1b9c
         values = cursor.fetchall()
         cursor.close()
         return len(values) > 0
-
+    
     def get_header(self) -> Dict[str, Union[str, int]]:
         return self.header
-
+    
     def add_header_param(self, key: str, value: str) -> Dict[str, Union[str, int]]:
         header = self.get_header()
         header[key] = value
         return header
-
+    
     def add_ref(self, value: str) -> Dict[str, Union[str, int]]:
         return self.add_header_param("referer", value)
-
+    
     def get_st(self) -> Tuple[str, int]:
         """
         获得session token
@@ -174,7 +175,7 @@ x-xsrf-token: 1d1b9c
             self.logger.error(e)
             time.sleep(30)
             self.refreshPage()
-
+    
     def refreshRecommend(self):
         """
         刷新热门推荐（会包含广告）
@@ -202,7 +203,7 @@ x-xsrf-token: 1d1b9c
             self.logger.error(e)
             time.sleep(60)
             self.refreshRecommend()
-
+    
     def like(self, oPost: CPost) -> bool:
         """
         点赞
@@ -227,7 +228,7 @@ x-xsrf-token: 1d1b9c
         except Exception as e:
             self.logger.error(r.json())
             self.logger.error(e)
-
+    
     def startRepost(self, oPost: CPost):
         """
         开始转发微博
@@ -238,8 +239,8 @@ x-xsrf-token: 1d1b9c
         bResult = self.repost(oPost)
         self.logger.info(f"结束处理{oPost.userName}（{oPost.userUid}）的微博 {self.postDetail(oPost)}")
         return bResult
-
-    def repost(self, oPost: CPost, extra_data=None):
+    
+    def repost(self, oPost: CPost, extra_data=None) -> bool:
         """
         转发微博
 
@@ -258,7 +259,7 @@ x-xsrf-token: 1d1b9c
             self.logger.info(f"开始处理{oPost.userName}（{oPost.userUid}）的微博 {self.postDetail(oPost)}")
         else:
             data = extra_data
-
+        
         repostable = self.dump_post(oPost)
         if not repostable:
             self.logger.info(f"微博太小，不转载。")
@@ -304,12 +305,12 @@ x-xsrf-token: 1d1b9c
                 else:
                     time.sleep(30)
                 return False
-
+        
         except Exception as e:
             self.logger.error(r.text)
             self.logger.error(e)
             return self.repost(oPost, extra_data=data)
-
+    
     def solve_captcha(self) -> str:
         """
         处理验证码
@@ -322,12 +323,12 @@ x-xsrf-token: 1d1b9c
         res = self.mainSession.get(url, headers=self.header)
         ocr = ddddocr.DdddOcr(show_ad=False)
         result = ocr.classification(res.content)
-        self.logger.info(f"识别验证码为：{result}")
+        self.logger.info(f"识别验证码为:{result}")
         if len(result) != 4:
             self.solve_captcha()
         else:
             return result
-
+    
     def update_detail(self, oPost: CPost) -> bool:
         """
         更新全文
@@ -361,11 +362,12 @@ x-xsrf-token: 1d1b9c
             handler.close()
             self.logger.removeHandler(handler)
         self.conn.close()
-
-    def dump_post(self, oPost: CPost) -> bool:
+    
+    def dump_post(self, oPost: CPost, canDuplicable=False) -> bool:
         """
         保存微博，并且判断微博图片大小
 
+        :param canDuplicable: 能否重复保存
         :param oPost: 微博
         :return: 是否应该转发
         """
@@ -379,8 +381,7 @@ x-xsrf-token: 1d1b9c
         threshold = 1e6 * 0.4
         if not os.path.exists(savePath):
             os.makedirs(savePath)
-        else:
-            # self.logger.error("重复保存")
+        elif canDuplicable is False:
             return True
         contextName = f"{savePath}/{oPost.uid}.txt"
         if oPost.Text().find("全文") > 0:
@@ -393,7 +394,7 @@ x-xsrf-token: 1d1b9c
                 f.write(livePhoto + '\n')
             if oPost.video:
                 f.write(oPost.video)
-    
+        
         try:
             if oPost.video:
                 video_res = requests.get(oPost.video)
@@ -402,7 +403,7 @@ x-xsrf-token: 1d1b9c
                 self.logger.info(f"保存微博视频成功")
         except Exception as e:
             self.logger.error(e)
-    
+        
         try:
             for idx, livePhoto in enumerate(oPost.livePhotos):
                 livePhoto_res = requests.get(livePhoto)
@@ -411,7 +412,7 @@ x-xsrf-token: 1d1b9c
                 self.logger.info(f"保存微博LivePhotos{idx}成功")
         except Exception as e:
             self.logger.error(e)
-    
+        
         for idx, image in enumerate(oPost.images):
             try:
                 imageName = image.split('/').pop()
@@ -424,7 +425,7 @@ x-xsrf-token: 1d1b9c
             except Exception as e:
                 self.logger.error(e)
             self.logger.info(f"保存微博图片{idx + 1}成功")
-    
+        
         self.logger.info(f"保存微博内容成功")
         if iMaxImageSize < threshold and oPost.images:
             self.logger.info(f"图片最大size为{iMaxImageSize / 1e6}mb 小于{threshold / 1e6}mb")
@@ -434,7 +435,7 @@ x-xsrf-token: 1d1b9c
             return True
         else:
             return False
-
+    
     def detection(self, oPost: CPost) -> bool:
         """
         检测图片中的人和男人数来判断是否应该转发
@@ -450,62 +451,37 @@ x-xsrf-token: 1d1b9c
         else:
             self.updateScanHistory(oPost.uid)
         for image in oPost.thumbnail_images:
-            human_num, male_num = self.ai_api.detection(image, oPost.isRecommend)
+            human_num, male_num = self.oAIAPI.detection(image, oPost.isRecommend)
             if male_num >= 1 and oPost.isRecommend is True:  # 如果走热门推荐的话就不转发有男性的
                 return False
             if human_num >= 1:
                 self.logger.info(f"微博 {self.postDetail(oPost)} 检测到人体 {human_num}")
                 return True
             time.sleep(0.5)  # QPS=2
-
+        
         self.logger.info(f"微博 {self.postDetail(oPost)} 未检测到人体 ")
         return False
-
+    
+    def parseOnePost(self, sPostUrl: str) -> Union[CPost, None]:
+        if sPostUrl.isdigit():
+            sUrl = f"https://m.weibo.cn/detail/{sPostUrl}"
+        else:
+            sUrl = sPostUrl
+        try:
+            r = self.mainSession.get(sUrl, headers=self.header)
+            dPost = json.loads(re.findall(r'(?<=render_data = \[)[\s\S]*(?=\]\[0\])', r.text)[0])["status"]
+            oPost = CPost(dPost)
+        except Exception as e:
+            self.logger.error(e)
+            return None
+        return oPost
+    
     @staticmethod
     def postDetail(oPost: CPost) -> str:
         return f"https://m.weibo.cn/detail/{oPost.uid}"
-
+    
     @staticmethod
     def randomComment() -> str:
         lComments = ["[打call]", "[羞嗒嗒]", "[awsl]", "[赢牛奶]", "[心]", "[好喜欢]", "[求关注]", "[哆啦A梦花心]"]
         sComment = random.choice(lComments) * random.randint(1, 3)
         return sComment
-
-
-if __name__ == '__main__':
-    wd = WeiboDog()
-    raiseACall("启动成功")
-    while 1:
-        try:
-            # 下面是时间限制，但微博对刷新没有做啥限制，所以多刷新也没啥，没必要开
-            # if 2 <= datetime.now().hour < 6:
-            #     wd.logger.info("Heartbeat without request")
-            #     time.sleep(60)
-            #     continue
-            wd.refreshPage()
-            # 下面是寻找热门推荐，不建议开，微博的算法容易推荐奇怪的东西
-            # time.sleep(5)
-            # wd.refreshRecommend()
-            iStartTime = time.time()
-            iterDict = {**wd.thisRecommendPagePost, **wd.thisPagePost}
-            for _oPost in iterDict.values():
-                if wd.isInHistory(_oPost.uid):
-                    continue
-                if _oPost.video and _oPost.isRecommend is False:  # 转发视频（但热门推荐除外）
-                    wd.startRepost(_oPost)
-                elif wd.detection(_oPost):
-                    wd.startRepost(_oPost)
-                elif not _oPost.isOriginPost():
-                    lSp = sp_user()  # 只转发别人微博的博主
-                    if _oPost.userUid in lSp:
-                        if wd.detection(_oPost.originPost) or _oPost.originPost.video:
-                            wd.startRepost(_oPost.originPost)
-            if time.time() - iStartTime <= 60 * 1000:
-                interval = random.randint(50, 60)
-            else:
-                interval = 5
-            wd.logger.info("Heartbeat")
-            time.sleep(interval)
-        except Exception as e:
-            wd.logger.error(traceback.format_exc())
-            raiseACall(e)

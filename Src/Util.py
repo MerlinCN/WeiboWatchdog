@@ -5,7 +5,7 @@ import requests
 import Config
 
 
-def headers_raw_to_dict(headers_raw: bytes) -> Dict[str, str]:
+def byte2Headers(headers_raw: bytes) -> Dict[str, str]:
     """
     复制浏览器中的header
     """
@@ -35,16 +35,19 @@ def readCookies():
 def raiseACall(context):
     if not getattr(Config, "BarkKey", None):
         return
-    requests.get(f"https://api.day.app/{Config.BarkKey}/{context}")
+    try:
+        requests.get(f"https://api.day.app/{Config.BarkKey}/{context}")
+    except Exception as e:
+        pass
 
 
-def sp_user() -> List[int]:
+def readSpecialUsers() -> List[int]:
     if not getattr(Config, "SpUser", None):
         return []
     return Config.SpUser
 
 
-def get_ai_key():
+def readAIKey():
     if getattr(Config, "API_key", None) is None or getattr(Config, "SecretKey", None) is None:
         return "", ""
     return Config.API_key, Config.SecretKey
