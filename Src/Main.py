@@ -1,4 +1,3 @@
-import random
 import time
 import traceback
 
@@ -33,10 +32,11 @@ if __name__ == '__main__':
                     if _oPost.userUid in lSp:
                         if wd.detection(_oPost.originPost) or _oPost.originPost.video:
                             wd.startRepost(_oPost.originPost)
-            if time.time() - iStartTime <= 60 * 1000:
-                interval = random.randint(50, 60)
+            iGap = time.time() - iStartTime
+            if iGap <= 60:
+                interval = 60 - iGap
             else:
-                interval = 5
+                interval = 0
             wd.logger.info("Heartbeat")
             time.sleep(interval)
         except Exception as e:
