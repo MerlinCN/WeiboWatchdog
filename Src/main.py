@@ -2,6 +2,7 @@ import os
 import random
 import sqlite3
 import time
+import traceback
 from typing import Dict, Tuple, Union
 
 import ddddocr
@@ -307,6 +308,7 @@ x-xsrf-token: 1d1b9c
         except Exception as e:
             self.logger.error(r.text)
             self.logger.error(e)
+            return self.repost(oPost, extra_data=data)
 
     def solve_captcha(self) -> str:
         """
@@ -368,14 +370,19 @@ x-xsrf-token: 1d1b9c
         :return: 是否应该转发
         """
         rootPath = f"Data/{oPost.userName}/{oPost.uid}"
+        videoPath = f"Video/{oPost.userName}/{oPost.uid}"
+        if oPost.video:
+            savePath = videoPath
+        else:
+            savePath = rootPath
         iMaxImageSize = 0
         threshold = 1e6 * 0.4
-        if not os.path.exists(rootPath):
-            os.makedirs(rootPath)
+        if not os.path.exists(savePath):
+            os.makedirs(savePath)
         else:
             # self.logger.error("重复保存")
             return True
-        contextName = f"{rootPath}/{oPost.uid}.txt"
+        contextName = f"{savePath}/{oPost.uid}.txt"
         if oPost.Text().find("全文") > 0:
             self.update_detail(oPost)
         with open(contextName, 'w', encoding="utf8") as f:
@@ -386,30 +393,30 @@ x-xsrf-token: 1d1b9c
                 f.write(livePhoto + '\n')
             if oPost.video:
                 f.write(oPost.video)
-
+    
         try:
             if oPost.video:
                 video_res = requests.get(oPost.video)
-                with open(f"{rootPath}/{oPost.uid}.mp4", 'wb') as f:
+                with open(f"{savePath}/{oPost.uid}.mp4", 'wb') as f:
                     f.write(video_res.content)
                 self.logger.info(f"保存微博视频成功")
         except Exception as e:
             self.logger.error(e)
-
+    
         try:
             for idx, livePhoto in enumerate(oPost.livePhotos):
                 livePhoto_res = requests.get(livePhoto)
-                with open(f"{rootPath}/livephoto_{idx}.mov", 'wb') as f:
+                with open(f"{savePath}/livephoto_{idx}.mov", 'wb') as f:
                     f.write(livePhoto_res.content)
                 self.logger.info(f"保存微博LivePhotos{idx}成功")
         except Exception as e:
             self.logger.error(e)
-
+    
         for idx, image in enumerate(oPost.images):
             try:
                 imageName = image.split('/').pop()
                 res = requests.get(image)
-                with open(f"{rootPath}/{imageName}", 'wb') as f:
+                with open(f"{savePath}/{imageName}", 'wb') as f:
                     iImageSize = len(res.content)
                     if iImageSize > iMaxImageSize:
                         iMaxImageSize = iImageSize
@@ -417,7 +424,7 @@ x-xsrf-token: 1d1b9c
             except Exception as e:
                 self.logger.error(e)
             self.logger.info(f"保存微博图片{idx + 1}成功")
-
+    
         self.logger.info(f"保存微博内容成功")
         if iMaxImageSize < threshold and oPost.images:
             self.logger.info(f"图片最大size为{iMaxImageSize / 1e6}mb 小于{threshold / 1e6}mb")
@@ -479,6 +486,7 @@ if __name__ == '__main__':
             # 下面是寻找热门推荐，不建议开，微博的算法容易推荐奇怪的东西
             # time.sleep(5)
             # wd.refreshRecommend()
+            iStartTime = time.time()
             iterDict = {**wd.thisRecommendPagePost, **wd.thisPagePost}
             for _oPost in iterDict.values():
                 if wd.isInHistory(_oPost.uid):
@@ -492,9 +500,12 @@ if __name__ == '__main__':
                     if _oPost.userUid in lSp:
                         if wd.detection(_oPost.originPost) or _oPost.originPost.video:
                             wd.startRepost(_oPost.originPost)
-            interval = random.randint(50, 60)
+            if time.time() - iStartTime <= 60 * 1000:
+                interval = random.randint(50, 60)
+            else:
+                interval = 5
             wd.logger.info("Heartbeat")
             time.sleep(interval)
         except Exception as e:
-            wd.logger.error(e)
+            wd.logger.error(traceback.format_exc())
             raiseACall(e)
