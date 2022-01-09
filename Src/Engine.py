@@ -3,6 +3,7 @@ import os
 import random
 import re
 import sqlite3
+import sys
 import time
 from typing import Dict, Union, Tuple
 
@@ -425,8 +426,10 @@ x-xsrf-token: 1d1b9c
             except Exception as e:
                 self.logger.error(e)
             self.logger.info(f"保存微博图片{idx + 1}成功")
-        
+
         self.logger.info(f"保存微博内容成功")
+        if sys.platform == "linux":
+            os.system(f"nohup bypy -v upload  {savePath} {savePath} >PCSLog &")
         if iMaxImageSize < threshold and oPost.images:
             self.logger.info(f"图片最大size为{iMaxImageSize / 1e6}mb 小于{threshold / 1e6}mb")
         elif iMaxImageSize >= threshold:
