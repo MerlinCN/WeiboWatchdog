@@ -57,7 +57,8 @@ class SubFunctions(SpiderEngine):
         try:
             if r.json().get("ok") == 1:
                 self.logger.info(f'转发微博成功')
-                self.updateHistory(mid)
+                if not self.isInHistory(oPost.uid):
+                    self.updateHistory(mid)
                 self.like(oPost)
                 return True
             else:
