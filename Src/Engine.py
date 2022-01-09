@@ -5,6 +5,7 @@ import re
 import sqlite3
 import sys
 import time
+from multiprocessing import Process
 from typing import Dict, Union, Tuple
 
 import ddddocr
@@ -12,6 +13,7 @@ import requests
 
 from AITool import CBaiduAPI
 from MyLogger import getLogger
+from PCS import uploadFiles
 from Post import CPost
 from Util import byte2Headers, readCookies, raiseACall
 
@@ -429,7 +431,9 @@ x-xsrf-token: 1d1b9c
 
         self.logger.info(f"保存微博内容成功")
         if sys.platform == "linux":
-            os.system(f"nohup bypy -v upload  {savePath} {savePath} >PCSLog &")
+            p = Process(target=uploadFiles, args=(savePath,))
+            p.start()
+            # os.system(f"nohup bypy -v upload  {savePath} {savePath} >PCSLog &")
         if iMaxImageSize < threshold and oPost.images:
             self.logger.info(f"图片最大size为{iMaxImageSize / 1e6}mb 小于{threshold / 1e6}mb")
         elif iMaxImageSize >= threshold:
