@@ -3,7 +3,6 @@ import os
 import random
 import re
 import sqlite3
-import sys
 import time
 from multiprocessing import Process
 from typing import Dict, Union, Tuple
@@ -358,14 +357,6 @@ x-xsrf-token: 1d1b9c
             self.logger.error(responseJson)
             self.logger.error(e)
     
-    def __del__(self):
-        self.mainSession.close()
-        handlers = self.logger.handlers[:]
-        for handler in handlers:
-            handler.close()
-            self.logger.removeHandler(handler)
-        self.conn.close()
-    
     def dump_post(self, oPost: CPost, canDuplicable=False) -> bool:
         """
         保存微博，并且判断微博图片大小
@@ -410,9 +401,9 @@ x-xsrf-token: 1d1b9c
         try:
             for idx, livePhoto in enumerate(oPost.livePhotos):
                 livePhoto_res = requests.get(livePhoto)
-                with open(f"{savePath}/livephoto_{idx}.mov", 'wb') as f:
+                with open(f"{savePath}/livephoto_{idx + 1}.mov", 'wb') as f:
                     f.write(livePhoto_res.content)
-                self.logger.info(f"保存微博LivePhotos{idx}成功")
+                self.logger.info(f"保存微博LivePhotos{idx + 1}成功")
         except Exception as e:
             self.logger.error(e)
         
@@ -430,19 +421,20 @@ x-xsrf-token: 1d1b9c
             self.logger.info(f"保存微博图片{idx + 1}成功")
 
         self.logger.info(f"保存微博内容成功")
-        if sys.platform == "linux":
-            p = Process(target=uploadFiles, args=(savePath,))
-            p.start()
-            # os.system(f"nohup bypy -v upload  {savePath} {savePath} >PCSLog &")
         if iMaxImageSize < threshold and oPost.images:
             self.logger.info(f"图片最大size为{iMaxImageSize / 1e6}mb 小于{threshold / 1e6}mb")
         elif iMaxImageSize >= threshold:
             self.logger.info(f"图片最大size为{iMaxImageSize / 1e6}mb 大于等于{threshold / 1e6}mb")
         if iMaxImageSize >= threshold or oPost.livePhotos or oPost.video:
+            self.afterDumpPost(savePath)
             return True
         else:
             return False
-    
+
+    def afterDumpPost(self, savePath):
+        p = Process(target=uploadFiles, args=(savePath,))  # 非阻塞，开个进程用于上传到云盘
+        p.start()
+
     def detection(self, oPost: CPost) -> bool:
         """
         检测图片中的人和男人数来判断是否应该转发
@@ -464,7 +456,6 @@ x-xsrf-token: 1d1b9c
             if human_num >= 1:
                 self.logger.info(f"微博 {self.postDetail(oPost)} 检测到人体 {human_num}")
                 return True
-            time.sleep(0.5)  # QPS=2
         
         self.logger.info(f"微博 {self.postDetail(oPost)} 未检测到人体 ")
         return False

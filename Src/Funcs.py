@@ -2,6 +2,7 @@ import sys
 import traceback
 
 from Engine import SpiderEngine
+from PCS import uploadFiles
 from Post import CPost
 
 
@@ -41,7 +42,7 @@ class SubFunctions(SpiderEngine):
         mid = oPost.uid
         data = {"id": mid, "content": content, "mid": mid, "st": st, "_spr": "screen:2560x1440"}
         self.logger.info(f"开始处理{oPost.userName}（{oPost.userUid}）的微博 {self.postDetail(oPost)}")
-        
+
         self.dump_post(oPost, canDuplicable=True)
         if oPost.onlyFans:
             self.logger.info(f"微博仅粉丝可见，不可转载。")
@@ -50,6 +51,8 @@ class SubFunctions(SpiderEngine):
         # 这里一定要加referer， 不加会变成不合法的请求
         self.add_ref(f"https://m.weibo.cn/compose/repost?id={mid}")
         self.header["x-xsrf-token"] = st
+        data["content"] = self.randomComment()
+        data["dualPost"] = 1
         r = self.mainSession.post(url, data=data, headers=self.header)
         if r.status_code != 200:  # 转发过多后
             self.logger.error("请求错误")
@@ -66,11 +69,14 @@ class SubFunctions(SpiderEngine):
                 self.logger.error(
                     f'转发微博失败 \n {err["msg"]} \n {r.json()}')
                 return False
-        
+
         except Exception as e:
             self.logger.error(r.text)
             self.logger.error(e)
             return False
+
+    def afterDumpPost(self, savePath):
+        uploadFiles(savePath)  # 阻塞
 
 
 if __name__ == '__main__':
