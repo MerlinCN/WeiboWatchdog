@@ -5,6 +5,7 @@ import re
 import sqlite3
 import time
 from multiprocessing import Process
+from threading import Timer
 from typing import Dict, Union, Tuple
 
 import ddddocr
@@ -47,7 +48,7 @@ x-xsrf-token: 1d1b9c
         self.thisPagePost: Dict[int, CPost] = {}  # 主页的微博
         self.thisRecommendPagePost: Dict[int, CPost] = {}  # 热门推荐的微博
         self.st, self.uid = self.get_st()
-        
+        self.allowPost = True
         self.initConn()
     
     def initConn(self):
@@ -261,7 +262,7 @@ x-xsrf-token: 1d1b9c
             self.logger.info(f"开始处理{oPost.userName}（{oPost.userUid}）的微博 {self.postDetail(oPost)}")
         else:
             data = extra_data
-        
+
         repostable = self.dump_post(oPost)
         if not repostable:
             self.logger.info(f"微博太小，不转载。")
@@ -270,6 +271,9 @@ x-xsrf-token: 1d1b9c
         if oPost.onlyFans:
             self.logger.info(f"微博仅粉丝可见，不可转载。")
             self.updateHistory(mid)
+            return False
+        if self.allowPost is False:
+            self.logger.info(f"不转载状态")
             return False
         if len(oPost.images) >= 6:
             data["content"] = self.randomComment()
@@ -302,16 +306,21 @@ x-xsrf-token: 1d1b9c
                     f'转发微博失败 \n {err["msg"]} \n {r.json()}')
                 raiseACall(f'转发微博失败 {err["msg"]}')
                 if errno == '20016':  # 转发频率过高，等一会儿就好
-                    time.sleep(60 * 30)
+                    self.allowPost = False
+                    tm = Timer(60 * 30, self.openAllow, args=[self])
+                    tm.start()
                     return self.repost(oPost, extra_data=data)
                 else:
                     time.sleep(30)
                 return False
-        
+
         except Exception as e:
             self.logger.error(r.text)
             self.logger.error(e)
             return self.repost(oPost, extra_data=data)
+
+    def openAllow(self):
+        self.allowPost = True
 
     def solve_captcha(self) -> str:
         """
