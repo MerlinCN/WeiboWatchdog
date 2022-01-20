@@ -1,3 +1,5 @@
+import os
+
 from bypy import ByPy
 
 from MyLogger import getLogger
@@ -16,3 +18,4 @@ class MyByPy(ByPy):
 def uploadFiles(filePath: str):
     bp = MyByPy()
     bp.upload(filePath, filePath)
+    os.system(f"rm -rf {filePath}")

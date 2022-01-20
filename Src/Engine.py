@@ -302,7 +302,7 @@ x-xsrf-token: 1d1b9c
                     f'转发微博失败 \n {err["msg"]} \n {r.json()}')
                 raiseACall(f'转发微博失败 {err["msg"]}')
                 if errno == '20016':  # 转发频率过高，等一会儿就好
-                    time.sleep(60)
+                    time.sleep(60 * 30)
                     return self.repost(oPost, extra_data=data)
                 else:
                     time.sleep(30)
@@ -312,7 +312,7 @@ x-xsrf-token: 1d1b9c
             self.logger.error(r.text)
             self.logger.error(e)
             return self.repost(oPost, extra_data=data)
-    
+
     def solve_captcha(self) -> str:
         """
         处理验证码

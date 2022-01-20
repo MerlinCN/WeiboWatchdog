@@ -1,4 +1,5 @@
 import sys
+import time
 import traceback
 
 from Engine import SpiderEngine
@@ -28,8 +29,8 @@ class SubFunctions(SpiderEngine):
         else:
             self.logger.error(f"找不到函数{funcName}")
             return
-    
-    def repost(self, oPost: CPost, *args, **kwargs) -> bool:
+
+    def repost(self, oPost: CPost, extra_data=None, *args, **kwargs) -> bool:
         """
         转发微博
 
@@ -40,10 +41,13 @@ class SubFunctions(SpiderEngine):
         url = "https://m.weibo.cn/api/statuses/repost"
         content = "转发微博"
         mid = oPost.uid
-        data = {"id": mid, "content": content, "mid": mid, "st": st, "_spr": "screen:2560x1440"}
-        self.logger.info(f"开始处理{oPost.userName}（{oPost.userUid}）的微博 {self.postDetail(oPost)}")
-
-        self.dump_post(oPost, canDuplicable=True)
+        if not extra_data:
+            data = {"id": mid, "content": content, "mid": mid, "st": st, "_spr": "screen:2560x1440"}
+            self.dump_post(oPost, canDuplicable=True)
+            self.logger.info(f"开始处理{oPost.userName}（{oPost.userUid}）的微博 {self.postDetail(oPost)}")
+        else:
+            data = extra_data
+    
         if oPost.onlyFans:
             self.logger.info(f"微博仅粉丝可见，不可转载。")
             self.updateHistory(mid)
@@ -66,8 +70,14 @@ class SubFunctions(SpiderEngine):
                 return True
             else:
                 err = r.json()
+                error_type = err["error_type"]
                 self.logger.error(
                     f'转发微博失败 \n {err["msg"]} \n {r.json()}')
+                if error_type == "captcha":  # 需要验证码
+                    code = self.solve_captcha()
+                    data["_code"] = code
+                    time.sleep(5)
+                    return self.repost(oPost, extra_data=data)
                 return False
 
         except Exception as e:

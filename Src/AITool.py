@@ -27,7 +27,13 @@ class CBaiduAPI:  # 百度人体识别API
             return person_num, male_num
         data = {"access_token": self.access_token, "image": base64.b64encode(res_image.content)}
         res_ai = requests.post(self.detection_url, data=data, headers=self.header)
-        res_ai_json = res_ai.json()
+        try:
+            res_ai_json = res_ai.json()
+        except Exception as e:
+            self.logger.error(res_ai.text)
+            self.logger.error(e)
+            raiseACall(f"人体识别出错 {res_ai.text}")
+            return person_num, male_num
         try:
             # 先看多少人，在看男性人数
             person_num_o = res_ai_json["person_num"]
