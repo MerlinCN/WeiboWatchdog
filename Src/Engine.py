@@ -19,7 +19,7 @@ from Util import byte2Headers, readCookies, raiseACall
 
 
 class SpiderEngine:
-    
+
     def __init__(self, loggerName: str):
         self.logger = getLogger(loggerName)
         self.oAIAPI = CBaiduAPI()
@@ -43,14 +43,14 @@ user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML,
 x-requested-with: XMLHttpRequest
 x-xsrf-token: 1d1b9c
         ''' % readCookies())
-        
+
         self.cookies = self.header["cookie"]
         self.thisPagePost: Dict[int, CPost] = {}  # 主页的微博
         self.thisRecommendPagePost: Dict[int, CPost] = {}  # 热门推荐的微博
         self.st, self.uid = self.get_st()
         self.allowPost = True
         self.initConn()
-    
+
     def initConn(self):
         """
         初始化表
@@ -67,7 +67,7 @@ x-xsrf-token: 1d1b9c
     );''')
         cursor.close()
         self.conn.commit()
-    
+
     def updateHistory(self, mid: int):
         """
         更新转发历史
@@ -79,7 +79,7 @@ x-xsrf-token: 1d1b9c
         cursor.close()
         self.conn.commit()
         self.logger.info(f"转发历史存库成功")
-    
+
     def updateScanHistory(self, mid: int):
         """
         更新扫描历史
@@ -88,7 +88,7 @@ x-xsrf-token: 1d1b9c
         cursor.execute(f"insert into ScanHistory (mid) values ({mid});")
         cursor.close()
         self.conn.commit()
-    
+
     def isInHistory(self, mid: int) -> bool:
         """
         是否已经转发
@@ -100,11 +100,11 @@ x-xsrf-token: 1d1b9c
         cursor.execute(f'''
         select * from history where mid = {mid};
         ''')
-        
+
         values = cursor.fetchall()
         cursor.close()
         return len(values) > 0
-    
+
     def isInScanHistory(self, mid: int) -> bool:
         """
         是否已经扫描
@@ -119,18 +119,18 @@ x-xsrf-token: 1d1b9c
         values = cursor.fetchall()
         cursor.close()
         return len(values) > 0
-    
+
     def get_header(self) -> Dict[str, Union[str, int]]:
         return self.header
-    
+
     def add_header_param(self, key: str, value: str) -> Dict[str, Union[str, int]]:
         header = self.get_header()
         header[key] = value
         return header
-    
+
     def add_ref(self, value: str) -> Dict[str, Union[str, int]]:
         return self.add_header_param("referer", value)
-    
+
     def get_st(self) -> Tuple[str, int]:
         """
         获得session token
@@ -146,13 +146,14 @@ x-xsrf-token: 1d1b9c
             raise Exception("未登录")
         st = data["data"]["st"]
         uid = int(data['data']['uid'])
+
         return st, uid
-    
+
     def refeshToken(self):
         st, _ = self.get_st()
         self.header["x-xsrf-token"] = st
         return self.header
-    
+
     def refreshPage(self):
         """
         刷新主页
@@ -162,9 +163,9 @@ x-xsrf-token: 1d1b9c
         header = self.add_ref("https://m.weibo.cn/")
         self.header["x-xsrf-token"] = st
         r = self.mainSession.get(url, headers=header)
-        data = r.json()
         self.thisPagePost = {}
         try:
+            data = r.json()
             if r.json().get("ok") == 1:
                 for dPost in data["data"]["statuses"]:
                     _oPost = CPost(dPost)
@@ -174,11 +175,11 @@ x-xsrf-token: 1d1b9c
                 self.logger.error(f"刷新主页失败 err = {data}")
                 return False
         except Exception as e:
-            self.logger.error(data)
+            self.logger.error(r.text)
             self.logger.error(e)
             time.sleep(30)
             self.refreshPage()
-    
+
     def refreshRecommend(self):
         """
         刷新热门推荐（会包含广告）
@@ -190,9 +191,9 @@ x-xsrf-token: 1d1b9c
         header = self.add_ref("https://m.weibo.cn/")
         self.header["x-xsrf-token"] = st
         r = self.mainSession.get(url, headers=header)
-        data = r.json()
         self.thisRecommendPagePost = {}
         try:
+            data = r.json()
             if r.json().get("ok") == 1:
                 for dPost in data["data"]["cards"]:
                     _oPost = CPost(dPost["mblog"], isRecommend=True)
@@ -202,11 +203,11 @@ x-xsrf-token: 1d1b9c
                 self.logger.error(f"刷新热门失败 err = {data}")
                 return False
         except Exception as e:
-            self.logger.error(data)
+            self.logger.error(r.text)
             self.logger.error(e)
             time.sleep(60)
             self.refreshRecommend()
-    
+
     def like(self, oPost: CPost) -> bool:
         """
         点赞
@@ -231,7 +232,7 @@ x-xsrf-token: 1d1b9c
         except Exception as e:
             self.logger.error(r.json())
             self.logger.error(e)
-    
+
     def startRepost(self, oPost: CPost):
         """
         开始转发微博
@@ -242,7 +243,7 @@ x-xsrf-token: 1d1b9c
         bResult = self.repost(oPost)
         self.logger.info(f"结束处理{oPost.userName}（{oPost.userUid}）的微博 {self.postDetail(oPost)}")
         return bResult
-    
+
     def repost(self, oPost: CPost, extra_data=None) -> bool:
         """
         转发微博
@@ -339,7 +340,7 @@ x-xsrf-token: 1d1b9c
             self.solve_captcha()
         else:
             return result
-    
+
     def update_detail(self, oPost: CPost) -> bool:
         """
         更新全文
@@ -365,7 +366,7 @@ x-xsrf-token: 1d1b9c
         except Exception as e:
             self.logger.error(responseJson)
             self.logger.error(e)
-    
+
     def dump_post(self, oPost: CPost, canDuplicable=False) -> bool:
         """
         保存微博，并且判断微博图片大小
@@ -397,7 +398,7 @@ x-xsrf-token: 1d1b9c
                 f.write(livePhoto + '\n')
             if oPost.video:
                 f.write(oPost.video)
-        
+
         try:
             if oPost.video:
                 video_res = requests.get(oPost.video)
@@ -406,7 +407,7 @@ x-xsrf-token: 1d1b9c
                 self.logger.info(f"保存微博视频成功")
         except Exception as e:
             self.logger.error(e)
-        
+
         try:
             for idx, livePhoto in enumerate(oPost.livePhotos):
                 livePhoto_res = requests.get(livePhoto)
@@ -415,7 +416,7 @@ x-xsrf-token: 1d1b9c
                 self.logger.info(f"保存微博LivePhotos{idx + 1}成功")
         except Exception as e:
             self.logger.error(e)
-        
+
         for idx, image in enumerate(oPost.images):
             try:
                 imageName = image.split('/').pop()
@@ -465,10 +466,10 @@ x-xsrf-token: 1d1b9c
             if human_num >= 1:
                 self.logger.info(f"微博 {self.postDetail(oPost)} 检测到人体 {human_num}")
                 return True
-        
+
         self.logger.info(f"微博 {self.postDetail(oPost)} 未检测到人体 ")
         return False
-    
+
     def parseOnePost(self, sPostUrl: str) -> Union[CPost, None]:
         if sPostUrl.isdigit():
             sUrl = f"https://m.weibo.cn/detail/{sPostUrl}"
@@ -482,11 +483,11 @@ x-xsrf-token: 1d1b9c
             self.logger.error(e)
             return None
         return oPost
-    
+
     @staticmethod
     def postDetail(oPost: CPost) -> str:
         return f"https://m.weibo.cn/detail/{oPost.uid}"
-    
+
     @staticmethod
     def randomComment() -> str:
         lComments = ["[打call]", "[羞嗒嗒]", "[awsl]", "[赢牛奶]", "[心]", "[好喜欢]", "[求关注]", "[哆啦A梦花心]"]
