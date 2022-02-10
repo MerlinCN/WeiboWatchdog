@@ -146,6 +146,7 @@ x-xsrf-token: 1d1b9c
             raise Exception("未登录")
         st = data["data"]["st"]
         uid = int(data['data']['uid'])
+
         return st, uid
     
     def refeshToken(self):
@@ -162,9 +163,9 @@ x-xsrf-token: 1d1b9c
         header = self.add_ref("https://m.weibo.cn/")
         self.header["x-xsrf-token"] = st
         r = self.mainSession.get(url, headers=header)
-        data = r.json()
         self.thisPagePost = {}
         try:
+            data = r.json()
             if r.json().get("ok") == 1:
                 for dPost in data["data"]["statuses"]:
                     _oPost = CPost(dPost)
@@ -174,7 +175,7 @@ x-xsrf-token: 1d1b9c
                 self.logger.error(f"刷新主页失败 err = {data}")
                 return False
         except Exception as e:
-            self.logger.error(data)
+            self.logger.error(r.text)
             self.logger.error(e)
             time.sleep(30)
             self.refreshPage()
@@ -190,9 +191,9 @@ x-xsrf-token: 1d1b9c
         header = self.add_ref("https://m.weibo.cn/")
         self.header["x-xsrf-token"] = st
         r = self.mainSession.get(url, headers=header)
-        data = r.json()
         self.thisRecommendPagePost = {}
         try:
+            data = r.json()
             if r.json().get("ok") == 1:
                 for dPost in data["data"]["cards"]:
                     _oPost = CPost(dPost["mblog"], isRecommend=True)
@@ -202,7 +203,7 @@ x-xsrf-token: 1d1b9c
                 self.logger.error(f"刷新热门失败 err = {data}")
                 return False
         except Exception as e:
-            self.logger.error(data)
+            self.logger.error(r.text)
             self.logger.error(e)
             time.sleep(60)
             self.refreshRecommend()
@@ -272,7 +273,7 @@ x-xsrf-token: 1d1b9c
             self.logger.info(f"微博仅粉丝可见，不可转载。")
             self.updateHistory(mid)
             return False
-        if self.allowPost is False:
+        if self.allowPost is False or oPost.video:
             self.logger.info(f"不转载状态")
             return False
         if len(oPost.images) >= 6:

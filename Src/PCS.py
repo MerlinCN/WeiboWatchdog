@@ -1,4 +1,5 @@
 import os
+import sys
 
 from bypy import ByPy
 
@@ -18,4 +19,5 @@ class MyByPy(ByPy):
 def uploadFiles(filePath: str):
     bp = MyByPy()
     bp.upload(filePath, filePath)
-    os.system(f"rm -rf {filePath}")
+    if sys.platform == "linux":
+        os.system(f"rm -rf {filePath}")

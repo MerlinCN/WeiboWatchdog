@@ -31,8 +31,8 @@ class CBaiduAPI:  # 百度人体识别API
             res_ai_json = res_ai.json()
         except Exception as e:
             self.logger.error(res_ai.text)
-            self.logger.error(e)
             raiseACall(f"人体识别出错 {res_ai.text}")
+            self.logger.error(e)
             return person_num, male_num
         try:
             # 先看多少人，在看男性人数
