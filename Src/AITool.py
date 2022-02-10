@@ -17,7 +17,7 @@ class CBaiduAPI:  # 百度人体识别API
         self.access_token = root_res.json()["access_token"]
         self.header = {'content-type': 'application/x-www-form-urlencoded'}
         self.detection_url = "https://aip.baidubce.com/rest/2.0/image-classify/v1/body_attr"
-    
+
     def detection(self, image_url: str, bStrict=False) -> Tuple[int, int]:
         res_image = self.session.get(image_url)
         person_num = 0

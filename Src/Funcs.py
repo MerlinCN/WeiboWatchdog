@@ -10,7 +10,7 @@ from Post import CPost
 class SubFunctions(SpiderEngine):
     def __init__(self):
         super(SubFunctions, self).__init__(loggerName="SubFuncs")
-    
+
     def selectFunc(self, funcName: str, *args):
         self.logger.info(f"收到命令【{funcName}】,参数为:{args}")
         if funcName == "repost":
@@ -47,7 +47,7 @@ class SubFunctions(SpiderEngine):
             self.logger.info(f"开始处理{oPost.userName}（{oPost.userUid}）的微博 {self.postDetail(oPost)}")
         else:
             data = extra_data
-    
+
         if oPost.onlyFans:
             self.logger.info(f"微博仅粉丝可见，不可转载。")
             self.updateHistory(mid)
@@ -90,8 +90,13 @@ class SubFunctions(SpiderEngine):
 
 
 if __name__ == '__main__':
+    # todo 用argparser来处理
     sf = SubFunctions()
     try:
-        sf.selectFunc(*sys.argv[1:])
+        if len(sys.argv) <= 1:
+            lCmd = input("请输入命令").split()
+        else:
+            lCmd = sys.argv[1:]
+        sf.selectFunc(*lCmd)
     except Exception as e:
         sf.logger.error(traceback.format_exc())
