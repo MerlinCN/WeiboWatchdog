@@ -9,25 +9,19 @@ if __name__ == '__main__':
     raiseACall("启动成功")
     while 1:
         try:
-            # 下面是时间限制，但微博对刷新没有做啥限制，所以多刷新也没啥，没必要开
-            # if 2 <= datetime.now().hour < 6:
-            #     wd.logger.info("Heartbeat without request")
-            #     time.sleep(60)
-            #     continue
             wd.refreshPage()
-            # 下面是寻找热门推荐，不建议开，微博的算法容易推荐奇怪的东西
-            # time.sleep(5)
-            # wd.refreshRecommend()
             iStartTime = time.time()
             iterDict = {**wd.thisRecommendPagePost, **wd.thisPagePost}
             for _oPost in iterDict.values():
                 if wd.isInHistory(_oPost.uid):
                     continue
-                if _oPost.video and _oPost.isRecommend is False:  # 转发视频（但热门推荐除外）
+                if _oPost.video and _oPost.isRecommend is False:  # 现在只点赞视频
+                    wd.startRepost(_oPost)  # 现在只点赞视频
+                elif wd.specialTopics(_oPost):
                     wd.startRepost(_oPost)
-                elif wd.detection(_oPost):
+                elif wd.detection(_oPost):  # 检测到图片中有人且大小满足
                     wd.startRepost(_oPost)
-                elif not _oPost.isOriginPost():
+                elif not _oPost.isOriginPost():  # 如果不是原创微博
                     lSp = readSpecialUsers()  # 只转发别人微博的博主
                     if _oPost.userUid in lSp:
                         if wd.detection(_oPost.originPost) or _oPost.originPost.video:

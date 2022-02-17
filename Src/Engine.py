@@ -19,7 +19,7 @@ from Util import byte2Headers, readCookies, raiseACall
 
 
 class SpiderEngine:
-
+    
     def __init__(self, loggerName: str):
         self.logger = getLogger(loggerName)
         self.oAIAPI = CBaiduAPI()
@@ -50,7 +50,7 @@ x-xsrf-token: 1d1b9c
         self.st, self.uid = self.get_st()
         self.allowPost = True
         self.initConn()
-
+    
     def initConn(self):
         """
         初始化表
@@ -67,7 +67,7 @@ x-xsrf-token: 1d1b9c
     );''')
         cursor.close()
         self.conn.commit()
-
+    
     def updateHistory(self, mid: int):
         """
         更新转发历史
@@ -79,7 +79,7 @@ x-xsrf-token: 1d1b9c
         cursor.close()
         self.conn.commit()
         self.logger.info(f"转发历史存库成功")
-
+    
     def updateScanHistory(self, mid: int):
         """
         更新扫描历史
@@ -88,7 +88,7 @@ x-xsrf-token: 1d1b9c
         cursor.execute(f"insert into ScanHistory (mid) values ({mid});")
         cursor.close()
         self.conn.commit()
-
+    
     def isInHistory(self, mid: int) -> bool:
         """
         是否已经转发
@@ -104,7 +104,7 @@ x-xsrf-token: 1d1b9c
         values = cursor.fetchall()
         cursor.close()
         return len(values) > 0
-
+    
     def isInScanHistory(self, mid: int) -> bool:
         """
         是否已经扫描
@@ -119,18 +119,18 @@ x-xsrf-token: 1d1b9c
         values = cursor.fetchall()
         cursor.close()
         return len(values) > 0
-
+    
     def get_header(self) -> Dict[str, Union[str, int]]:
         return self.header
-
+    
     def add_header_param(self, key: str, value: str) -> Dict[str, Union[str, int]]:
         header = self.get_header()
         header[key] = value
         return header
-
+    
     def add_ref(self, value: str) -> Dict[str, Union[str, int]]:
         return self.add_header_param("referer", value)
-
+    
     def get_st(self) -> Tuple[str, int]:
         """
         获得session token
@@ -148,12 +148,12 @@ x-xsrf-token: 1d1b9c
         uid = int(data['data']['uid'])
 
         return st, uid
-
+    
     def refeshToken(self):
         st, _ = self.get_st()
         self.header["x-xsrf-token"] = st
         return self.header
-
+    
     def refreshPage(self):
         """
         刷新主页
@@ -179,7 +179,7 @@ x-xsrf-token: 1d1b9c
             self.logger.error(e)
             time.sleep(30)
             self.refreshPage()
-
+    
     def refreshRecommend(self):
         """
         刷新热门推荐（会包含广告）
@@ -207,7 +207,7 @@ x-xsrf-token: 1d1b9c
             self.logger.error(e)
             time.sleep(60)
             self.refreshRecommend()
-
+    
     def like(self, oPost: CPost) -> bool:
         """
         点赞
@@ -232,7 +232,7 @@ x-xsrf-token: 1d1b9c
         except Exception as e:
             self.logger.error(r.json())
             self.logger.error(e)
-
+    
     def startRepost(self, oPost: CPost):
         """
         开始转发微博
@@ -243,7 +243,7 @@ x-xsrf-token: 1d1b9c
         bResult = self.repost(oPost)
         self.logger.info(f"结束处理{oPost.userName}（{oPost.userUid}）的微博 {self.postDetail(oPost)}")
         return bResult
-
+    
     def repost(self, oPost: CPost, extra_data=None) -> bool:
         """
         转发微博
@@ -271,10 +271,12 @@ x-xsrf-token: 1d1b9c
             return False
         if oPost.onlyFans:
             self.logger.info(f"微博仅粉丝可见，不可转载。")
+            self.like(oPost)
             self.updateHistory(mid)
             return False
         if self.allowPost is False or oPost.video:
             self.logger.info(f"不转载状态")
+            self.like(oPost)
             return False
         if len(oPost.images) >= 6:
             data["content"] = self.randomComment()
@@ -319,10 +321,10 @@ x-xsrf-token: 1d1b9c
             self.logger.error(r.text)
             self.logger.error(e)
             return self.repost(oPost, extra_data=data)
-
+    
     def openAllow(self):
         self.allowPost = True
-
+    
     def solve_captcha(self) -> str:
         """
         处理验证码
@@ -340,7 +342,7 @@ x-xsrf-token: 1d1b9c
             self.solve_captcha()
         else:
             return result
-
+    
     def update_detail(self, oPost: CPost) -> bool:
         """
         更新全文
@@ -366,7 +368,7 @@ x-xsrf-token: 1d1b9c
         except Exception as e:
             self.logger.error(responseJson)
             self.logger.error(e)
-
+    
     def dump_post(self, oPost: CPost, canDuplicable=False) -> bool:
         """
         保存微博，并且判断微博图片大小
@@ -440,14 +442,14 @@ x-xsrf-token: 1d1b9c
             return True
         else:
             return False
-
+    
     def afterDumpPost(self, savePath):
         p = Process(target=uploadFiles, args=(savePath,))  # 非阻塞，开个进程用于上传到云盘
         p.start()
-
+    
     def detection(self, oPost: CPost) -> bool:
         """
-        检测图片中的人和男人数来判断是否应该转发
+        检测图片中的人来判断是否应该转发
 
         :param oPost:微博
         :return:是否应该转发
@@ -460,16 +462,14 @@ x-xsrf-token: 1d1b9c
         else:
             self.updateScanHistory(oPost.uid)
         for image in oPost.thumbnail_images:
-            human_num, male_num = self.oAIAPI.detection(image, oPost.isRecommend)
-            if male_num >= 1 and oPost.isRecommend is True:  # 如果走热门推荐的话就不转发有男性的
-                return False
+            human_num = self.oAIAPI.detection(image)
             if human_num >= 1:
                 self.logger.info(f"微博 {self.postDetail(oPost)} 检测到人体 {human_num}")
                 return True
-
+        
         self.logger.info(f"微博 {self.postDetail(oPost)} 未检测到人体 ")
         return False
-
+    
     def parseOnePost(self, sPostUrl: str) -> Union[CPost, None]:
         if sPostUrl.isdigit():
             sUrl = f"https://m.weibo.cn/detail/{sPostUrl}"
@@ -483,11 +483,18 @@ x-xsrf-token: 1d1b9c
             self.logger.error(e)
             return None
         return oPost
-
+    
+    @staticmethod
+    def specialTopics(oPost: CPost):
+        if oPost.Text().find("超话") > 0:
+            return True
+        else:
+            return False
+    
     @staticmethod
     def postDetail(oPost: CPost) -> str:
         return f"https://m.weibo.cn/detail/{oPost.uid}"
-
+    
     @staticmethod
     def randomComment() -> str:
         lComments = ["[打call]", "[羞嗒嗒]", "[awsl]", "[赢牛奶]", "[心]", "[好喜欢]", "[求关注]", "[哆啦A梦花心]"]
