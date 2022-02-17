@@ -277,6 +277,7 @@ x-xsrf-token: 1d1b9c
         if self.allowPost is False or oPost.video:
             self.logger.info(f"不转载状态")
             self.like(oPost)
+            self.updateHistory(mid)
             return False
         if len(oPost.images) >= 6:
             data["content"] = self.randomComment()
