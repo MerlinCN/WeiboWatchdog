@@ -270,8 +270,12 @@ x-xsrf-token: 1d1b9c
             self.logger.info(f"微博仅粉丝可见，不可转载。")
             self.like(oPost)
             return False
-        if self.allowPost is False or oPost.video:
+        if self.allowPost is False:
             self.logger.info(f"不转载状态")
+            self.like(oPost)
+            return False
+        if oPost.video:
+            self.logger.info(f"视频微博,不转载")
             self.like(oPost)
             return False
         if len(oPost.images) >= 6:
