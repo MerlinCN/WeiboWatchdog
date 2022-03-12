@@ -74,3 +74,6 @@ class CPost:
         text.replace("\n\n", "\n")
         hp.close()
         return text
+
+    def Url(self) -> str:
+        return f"https://m.weibo.cn/status/{self.uid}"

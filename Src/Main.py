@@ -11,10 +11,12 @@ if __name__ == '__main__':
         try:
             wd.refreshPage()
             iStartTime = time.time()
-            iterDict = {**wd.thisRecommendPagePost, **wd.thisPagePost}
-            for _oPost in iterDict.values():
-                if wd.isInHistory(_oPost.uid):
+            for _oPost in wd.thisPagePost.values():
+                isInScanHistory = wd.isInScanHistory(_oPost.uid)
+                if isInScanHistory:  # 单次扫描
                     continue
+                else:
+                    wd.updateScanHistory(_oPost.uid)
                 if _oPost.video and _oPost.isRecommend is False:  # 现在只点赞视频
                     wd.startRepost(_oPost)  # 现在只点赞视频
                 elif wd.specialTopics(_oPost):

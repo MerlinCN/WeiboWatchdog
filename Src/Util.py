@@ -32,11 +32,14 @@ def readCookies():
     return Config.Cookies
 
 
-def raiseACall(context):
+def raiseACall(context, url=""):
     if not getattr(Config, "BarkKey", None):
         return
     try:
-        requests.get(f"https://api.day.app/{Config.BarkKey}/{context}")
+        barkUrl = f"https://api.day.app/{Config.BarkKey}/{context}"
+        if url:
+            barkUrl += f"?url={url}"
+        requests.get(barkUrl)
     except Exception as e:
         pass
 

@@ -227,7 +227,7 @@ x-xsrf-token: 1d1b9c
                 self.logger.info(f'点赞成功')
                 return True
             else:
-                self.logger.error(f'点赞失败')
+                self.logger.info(f'点赞失败')
                 return False
         except Exception as e:
             self.logger.error(r.json())
@@ -256,8 +256,6 @@ x-xsrf-token: 1d1b9c
         url = "https://m.weibo.cn/api/statuses/repost"
         content = "转发微博"
         mid = oPost.uid
-        if self.isInHistory(mid):
-            return False
         if not extra_data:
             data = {"id": mid, "content": content, "mid": mid, "st": st, "_spr": "screen:2560x1440"}
             self.logger.info(f"开始处理{oPost.userName}（{oPost.userUid}）的微博 {self.postDetail(oPost)}")
@@ -267,17 +265,14 @@ x-xsrf-token: 1d1b9c
         repostable = self.dump_post(oPost)
         if not repostable:
             self.logger.info(f"微博太小，不转载。")
-            self.updateHistory(mid)
             return False
         if oPost.onlyFans:
             self.logger.info(f"微博仅粉丝可见，不可转载。")
             self.like(oPost)
-            self.updateHistory(mid)
             return False
         if self.allowPost is False or oPost.video:
             self.logger.info(f"不转载状态")
             self.like(oPost)
-            self.updateHistory(mid)
             return False
         if len(oPost.images) >= 6:
             data["content"] = self.randomComment()
@@ -287,7 +282,7 @@ x-xsrf-token: 1d1b9c
         self.header["x-xsrf-token"] = st
         r = self.mainSession.post(url, data=data, headers=self.header)
         if r.status_code != 200:  # 转发过多后
-            self.logger.error("请求错误，开始休眠5分钟")
+            self.logger.error(f"请求错误,开始休眠5分钟,{r.status_code},{r.text}")
             time.sleep(60 * 5)  # 5分钟一个单位
             return self.repost(oPost, extra_data=data)
         try:
@@ -308,12 +303,12 @@ x-xsrf-token: 1d1b9c
                     return self.repost(oPost, extra_data=data)
                 self.logger.error(
                     f'转发微博失败 \n {err["msg"]} \n {r.json()}')
-                raiseACall(f'转发微博失败 {err["msg"]}')
+                raiseACall(f'转发微博失败 {err["msg"]}', url=oPost.Url())
                 if errno == '20016':  # 转发频率过高，等一会儿就好
                     self.allowPost = False
                     tm = Timer(60 * 30, self.openAllow, args=[self])
                     tm.start()
-                    return self.repost(oPost, extra_data=data)
+                    return False
                 else:
                     time.sleep(30)
                 return False
@@ -354,7 +349,7 @@ x-xsrf-token: 1d1b9c
         mid = oPost.uid
         url = f"https://m.weibo.cn/statuses/extend?id={mid}"
         st, _ = self.get_st()
-        self.add_ref(f"https://m.weibo.cn/status/{mid}")
+        self.add_ref(oPost.Url())
         self.header["x-xsrf-token"] = st
         r = self.mainSession.get(url, headers=self.header)
         responseJson = r.json()
@@ -457,13 +452,8 @@ x-xsrf-token: 1d1b9c
         """
         if not oPost.thumbnail_images:  # 用缩略图来做识别（API限制4M)
             return False
-        isInScanHistory = self.isInScanHistory(oPost.uid)
-        if isInScanHistory:  # 单次扫描
-            return False
-        else:
-            self.updateScanHistory(oPost.uid)
         for image in oPost.thumbnail_images:
-            human_num = self.oAIAPI.detection(image)
+            human_num = self.oAIAPI.detection(image, oPost)
             if human_num >= 1:
                 self.logger.info(f"微博 {self.postDetail(oPost)} 检测到人体 {human_num}")
                 return True
@@ -498,6 +488,6 @@ x-xsrf-token: 1d1b9c
     
     @staticmethod
     def randomComment() -> str:
-        lComments = ["[打call]", "[羞嗒嗒]", "[awsl]", "[赢牛奶]", "[心]", "[好喜欢]", "[求关注]", "[哆啦A梦花心]"]
+        lComments = ["[打call]", "[羞嗒嗒]", "[awsl]", "[赢牛奶]", "[心]", "[好喜欢]", "[求关注]", "[哆啦A梦花心]", "[送花花]"]
         sComment = random.choice(lComments) * random.randint(1, 3)
         return sComment
