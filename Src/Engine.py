@@ -182,7 +182,7 @@ x-xsrf-token: 1d1b9c
     
     def refreshRecommend(self):
         """
-        刷新热门推荐（会包含广告）
+        刷新热门推荐(会包含广告)
 
         :return:是否成功
         """
@@ -241,7 +241,7 @@ x-xsrf-token: 1d1b9c
         :return: 是否成功
         """
         bResult = self.repost(oPost)
-        self.logger.info(f"结束处理{oPost.userName}（{oPost.userUid}）的微博 {self.postDetail(oPost)}")
+        self.logger.info(f"结束处理{oPost.userName}({oPost.userUid})的微博 {self.postDetail(oPost)}")
         return bResult
     
     def repost(self, oPost: CPost, extra_data=None) -> bool:
@@ -258,7 +258,7 @@ x-xsrf-token: 1d1b9c
         mid = oPost.uid
         if not extra_data:
             data = {"id": mid, "content": content, "mid": mid, "st": st, "_spr": "screen:2560x1440"}
-            self.logger.info(f"开始处理{oPost.userName}（{oPost.userUid}）的微博 {self.postDetail(oPost)}")
+            self.logger.info(f"开始处理{oPost.userName}({oPost.userUid})的微博 {self.postDetail(oPost)}")
         else:
             data = extra_data
 
@@ -325,7 +325,7 @@ x-xsrf-token: 1d1b9c
         """
         处理验证码
 
-        :return: 验证码识别结果（30%左右成功，但可多次尝试）
+        :return: 验证码识别结果(30%左右成功，但可多次尝试)
         """
         nowTime = int(time.time() * 1000)
         url = f"https://m.weibo.cn/api/captcha/show?t={nowTime}"
