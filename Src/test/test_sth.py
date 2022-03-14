@@ -1,6 +1,6 @@
 from Engine import SpiderEngine
 from Post import CPost
-from Util import raiseACall
+from Util import barkCall
 
 
 def test_parse(url) -> CPost:
@@ -10,7 +10,7 @@ def test_parse(url) -> CPost:
 
 
 def test_bark(context, url):
-    raiseACall(context, url)
+    barkCall(context, url)
 
 
 if __name__ == '__main__':

@@ -15,7 +15,7 @@ from AITool import CBaiduAPI
 from MyLogger import getLogger
 from PCS import uploadFiles
 from Post import CPost
-from Util import byte2Headers, readCookies, raiseACall
+from Util import byte2Headers, readCookies, barkCall
 
 
 class SpiderEngine:
@@ -287,6 +287,7 @@ x-xsrf-token: 1d1b9c
         r = self.mainSession.post(url, data=data, headers=self.header)
         if r.status_code != 200:  # 转发过多后
             self.logger.error(f"请求错误 {r.status_code},{r.text}")
+            barkCall("请求错误", url=oPost.Url())
             return False
         try:
             if r.json().get("ok") == 1:
@@ -306,7 +307,7 @@ x-xsrf-token: 1d1b9c
                     return self.repost(oPost, extra_data=data)
                 self.logger.error(
                     f'转发微博失败 \n {err["msg"]} \n {r.json()}')
-                raiseACall(f'转发微博失败 {err["msg"]}', url=oPost.Url())
+                barkCall(f'转发微博失败 {err["msg"]}', url=oPost.Url())
                 if errno == '20016':  # 转发频率过高，等一会儿就好
                     self.allowPost = False
                     tm = Timer(60 * 30, self.openAllow, args=[self])
@@ -477,7 +478,6 @@ x-xsrf-token: 1d1b9c
             self.logger.error(e)
             return None
         return oPost
-    
     
     @staticmethod
     def randomComment() -> str:

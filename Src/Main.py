@@ -2,11 +2,11 @@ import time
 import traceback
 
 from Engine import SpiderEngine
-from Util import raiseACall, readSpecialUsers
+from Util import barkCall, readSpecialUsers
 
 if __name__ == '__main__':
     wd = SpiderEngine(loggerName="MainLoop")
-    raiseACall("启动成功")
+    barkCall("启动成功")
     while 1:
         try:
             wd.refreshPage()
@@ -44,4 +44,4 @@ if __name__ == '__main__':
             time.sleep(interval)
         except Exception as e:
             wd.logger.error(traceback.format_exc())
-            raiseACall(e)
+            barkCall(e)

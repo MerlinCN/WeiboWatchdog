@@ -32,7 +32,7 @@ def readCookies():
     return Config.Cookies
 
 
-def raiseACall(context, url=""):
+def barkCall(context, url=""):
     if not getattr(Config, "BarkKey", None):
         return
     try:

@@ -4,7 +4,7 @@ import requests
 
 from MyLogger import getLogger
 from Post import CPost
-from Util import readAIKey, raiseACall
+from Util import readAIKey, barkCall
 
 
 class CBaiduAPI:  # 百度人体识别API
@@ -22,7 +22,7 @@ class CBaiduAPI:  # 百度人体识别API
         res_image = self.session.get(image_url)
         person_num = 0
         if res_image.status_code != 200:  # QPS过高
-            raiseACall(f"人体识别出错 {image_url}")
+            barkCall(f"人体识别出错 {image_url}")
             return person_num
         data = {"access_token": self.access_token, "image": base64.b64encode(res_image.content)}
         res_ai = requests.post(self.detection_url, data=data, headers=self.header)
@@ -30,7 +30,7 @@ class CBaiduAPI:  # 百度人体识别API
             res_ai_json = res_ai.json()
         except Exception as e:
             self.logger.error(res_ai.text)
-            raiseACall(f"人体识别出错 {res_ai.text}", oPost.Url())
+            barkCall(f"人体识别出错 {res_ai.text}", oPost.Url())
             self.logger.error(e)
             return person_num
         try:
@@ -46,5 +46,5 @@ class CBaiduAPI:  # 百度人体识别API
         except Exception as e:
             self.logger.error(res_ai_json)
             self.logger.error(e)
-            raiseACall(f"人体识别出错 {res_ai_json}")
+            barkCall(f"人体识别出错 {res_ai_json}")
             return person_num
