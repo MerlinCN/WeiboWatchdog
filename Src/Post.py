@@ -5,7 +5,6 @@ from typing import Union
 class CPostTextParser(HTMLParser):
     def __init__(self):
         super(CPostTextParser, self).__init__()
-
         self.postText: str = ""
 
     def handle_starttag(self, tag: str, attrs):
@@ -76,4 +75,14 @@ class CPost:
         return text
 
     def Url(self) -> str:
-        return f"https://m.weibo.cn/status/{self.uid}"
+        return f"https://m.weibo.cn/detail/{self.uid}"
+
+    def specialTopics(self) -> bool:
+        """
+        是否带有超话
+
+        """
+        if self.Text().find("超话") > 0:
+            return True
+        else:
+            return False

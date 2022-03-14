@@ -241,7 +241,7 @@ x-xsrf-token: 1d1b9c
         :return: 是否成功
         """
         bResult = self.repost(oPost)
-        self.logger.info(f"结束处理{oPost.userName}({oPost.userUid})的微博 {self.postDetail(oPost)}")
+        self.logger.info(f"结束处理{oPost.userName}({oPost.userUid})的微博 {oPost.Url()}")
         return bResult
     
     def repost(self, oPost: CPost, extra_data=None) -> bool:
@@ -258,7 +258,7 @@ x-xsrf-token: 1d1b9c
         mid = oPost.uid
         if not extra_data:
             data = {"id": mid, "content": content, "mid": mid, "st": st, "_spr": "screen:2560x1440"}
-            self.logger.info(f"开始处理{oPost.userName}({oPost.userUid})的微博 {self.postDetail(oPost)}")
+            self.logger.info(f"开始处理{oPost.userName}({oPost.userUid})的微博 {oPost.Url()}")
         else:
             data = extra_data
 
@@ -286,9 +286,8 @@ x-xsrf-token: 1d1b9c
         self.header["x-xsrf-token"] = st
         r = self.mainSession.post(url, data=data, headers=self.header)
         if r.status_code != 200:  # 转发过多后
-            self.logger.error(f"请求错误,开始休眠5分钟,{r.status_code},{r.text}")
-            time.sleep(60 * 5)  # 5分钟一个单位
-            return self.repost(oPost, extra_data=data)
+            self.logger.error(f"请求错误 {r.status_code},{r.text}")
+            return False
         try:
             if r.json().get("ok") == 1:
                 self.logger.info(f'转发微博成功')
@@ -459,10 +458,10 @@ x-xsrf-token: 1d1b9c
         for image in oPost.thumbnail_images:
             human_num = self.oAIAPI.detection(image, oPost)
             if human_num >= 1:
-                self.logger.info(f"微博 {self.postDetail(oPost)} 检测到人体 {human_num}")
+                self.logger.info(f"微博 {oPost.Url()} 检测到人体 {human_num}")
                 return True
-        
-        self.logger.info(f"微博 {self.postDetail(oPost)} 未检测到人体 ")
+
+        self.logger.info(f"微博 {oPost.Url()} 未检测到人体 ")
         return False
     
     def parseOnePost(self, sPostUrl: str) -> Union[CPost, None]:
@@ -479,16 +478,6 @@ x-xsrf-token: 1d1b9c
             return None
         return oPost
     
-    @staticmethod
-    def specialTopics(oPost: CPost):
-        if oPost.Text().find("超话") > 0:
-            return True
-        else:
-            return False
-    
-    @staticmethod
-    def postDetail(oPost: CPost) -> str:
-        return f"https://m.weibo.cn/detail/{oPost.uid}"
     
     @staticmethod
     def randomComment() -> str:

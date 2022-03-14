@@ -20,7 +20,7 @@ if __name__ == '__main__':
                         wd.updateScanHistory(_oPost.uid)
                     if _oPost.video and _oPost.isRecommend is False:  # 现在只点赞视频
                         wd.startRepost(_oPost)  # 现在只点赞视频
-                    elif wd.specialTopics(_oPost):
+                    elif _oPost.specialTopics():
                         wd.startRepost(_oPost)
                     elif wd.detection(_oPost):  # 检测到图片中有人且大小满足
                         wd.startRepost(_oPost)

@@ -44,7 +44,7 @@ class SubFunctions(SpiderEngine):
         if not extra_data:
             data = {"id": mid, "content": content, "mid": mid, "st": st, "_spr": "screen:2560x1440"}
             self.dump_post(oPost, canDuplicable=True)
-            self.logger.info(f"开始处理{oPost.userName}({oPost.userUid})的微博 {self.postDetail(oPost)}")
+            self.logger.info(f"开始处理{oPost.userName}({oPost.userUid})的微博 {oPost.Url()}")
         else:
             data = extra_data
 
