@@ -9,7 +9,7 @@ from Post import CPost
 
 class SubFunctions(SpiderEngine):
     def __init__(self):
-        super(SubFunctions, self).__init__(loggerName="SubFuncs")
+        super(SubFunctions, self).__init__(loggerName="SubFuncs", printLog=False)
 
     def selectFunc(self, funcName: str, *args):
         self.logger.info(f"收到命令【{funcName}】,参数为:{args}")

@@ -21,8 +21,8 @@ from Util import byte2Headers, readCookies, barkCall
 
 class SpiderEngine:
     
-    def __init__(self, loggerName: str):
-        self.logger = getLogger(loggerName)
+    def __init__(self, loggerName: str, printLog=True):
+        self.logger = getLogger(loggerName, printLog)
         self.oAIAPI = CBaiduAPI()
         self.mainSession = requests.session()
         self.conn = sqlite3.connect("history.db")
@@ -44,7 +44,7 @@ user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML,
 x-requested-with: XMLHttpRequest
 x-xsrf-token: 1d1b9c
         ''' % readCookies())
-
+        
         self.cookies = self.header["cookie"]
         self.thisPagePost: Dict[int, CPost] = {}  # 主页的微博
         self.thisRecommendPagePost: Dict[int, CPost] = {}  # 热门推荐的微博

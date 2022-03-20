@@ -5,7 +5,7 @@ import sys
 from logging import Logger
 
 
-def initLogger(myLogger: Logger):
+def initLogger(myLogger: Logger, printLog: bool):
     s_handler = logging.StreamHandler(sys.stdout)
     s_handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(filename)s[:%(lineno)d] - %(message)s"))
     log_path = f"Log/{myLogger.name}/"
@@ -15,15 +15,16 @@ def initLogger(myLogger: Logger):
     f_handler.suffix = "%Y%m%d_%H.log"
     f_handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(filename)s[:%(lineno)d] - %(message)s"))
     f_handler.doRollover()
-    myLogger.addHandler(s_handler)
+    if printLog:
+        myLogger.addHandler(s_handler)
     myLogger.addHandler(f_handler)
     myLogger.setLevel(logging.DEBUG)
     setattr(myLogger, "isInit", True)
 
 
-def getLogger(loggerName: str) -> Logger:
+def getLogger(loggerName: str, printLog: bool = True) -> Logger:
     logger = logging.getLogger(loggerName)
     if getattr(logger, "isInit", False) is False:
-        initLogger(logger)
+        initLogger(logger, printLog)
     
     return logger
