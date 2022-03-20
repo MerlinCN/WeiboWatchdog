@@ -3,6 +3,7 @@ import os
 import random
 import re
 import sqlite3
+import sys
 import time
 from multiprocessing import Process
 from threading import Timer
@@ -441,6 +442,8 @@ x-xsrf-token: 1d1b9c
             self.afterDumpPost(savePath)
             return True
         else:
+            if sys.platform == "linux":
+                os.system(f"rm -rf {savePath}")
             return False
     
     def afterDumpPost(self, savePath):
