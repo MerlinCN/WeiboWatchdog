@@ -481,9 +481,10 @@ x-xsrf-token: 1d1b9c
             self.logger.error(e)
             return None
         return oPost
-    
+
     @staticmethod
     def randomComment() -> str:
-        lComments = ["[打call]", "[羞嗒嗒]", "[awsl]", "[赢牛奶]", "[心]", "[好喜欢]", "[求关注]", "[哆啦A梦花心]", "[送花花]"]
+        lComments = ["[打call]", "[羞嗒嗒]", "[awsl]", "[赢牛奶]", "[心]", "[好喜欢]",
+                     "[求关注]", "[哆啦A梦花心]", "[送花花]", "[彩虹屁]", "[哇]"]
         sComment = random.choice(lComments) * random.randint(1, 3)
         return sComment
