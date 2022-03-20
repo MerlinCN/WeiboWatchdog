@@ -34,11 +34,11 @@ class SubFunctions(SpiderEngine):
             oPost = self.parseOnePost(args[0])
             result = self.isInHistory(oPost.uid)
             if result is True:
-                self.logger.info(f"存在已转发的微博{oPost.uid}")
-                dRes["msg"] = f"存在已转发的微博{oPost.uid}"
+                self.logger.info(f"存在已转发的微博")
+                dRes["msg"] = f"存在已转发的微博"
             else:
-                self.logger.info(f"不存在已转发的微博{oPost.uid}")
-                dRes["msg"] = f"不存在已转发的微博{oPost.uid}"
+                self.logger.info(f"不存在已转发的微博")
+                dRes["msg"] = f"不存在已转发的微博"
         
         else:
             self.logger.error(f"找不到函数{funcType}")
