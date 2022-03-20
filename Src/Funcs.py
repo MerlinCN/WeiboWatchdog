@@ -23,13 +23,14 @@ class SubFunctions(SpiderEngine):
     def selectFunc(self, funcName: str, *args):
         self.logger.info(f"收到命令【{funcName}】,参数为:{args}")
         dRes = {"ok": 1, "msg": "命令执行成功"}
-        if funcName == FuncsType.repost:
+        funcType: int = int(funcName)
+        if funcType == FuncsType.repost:
             oPost = self.parseOnePost(args[0])
             self.startRepost(oPost)
-        elif funcName == FuncsType.dump:
+        elif funcType == FuncsType.dump:
             oPost = self.parseOnePost(args[0])
             self.dump_post(oPost, canDuplicable=True)
-        elif funcName == FuncsType.isInHistory:
+        elif funcType == FuncsType.isInHistory:
             oPost = self.parseOnePost(args[0])
             result = self.isInHistory(oPost.uid)
             if result is True:
@@ -40,9 +41,9 @@ class SubFunctions(SpiderEngine):
                 dRes["msg"] = f"不存在已转发的微博{oPost.uid}"
         
         else:
-            self.logger.error(f"找不到函数{funcName}")
+            self.logger.error(f"找不到函数{funcType}")
             dRes["ok"] = 0
-            dRes["msg"] = f"找不到函数{funcName}"
+            dRes["msg"] = f"找不到函数{funcType}"
         return dRes
     
     def repost(self, oPost: CPost, extra_data=None, *args, **kwargs) -> bool:
