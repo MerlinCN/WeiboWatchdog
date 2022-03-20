@@ -1,3 +1,4 @@
+import json
 import sys
 import time
 import traceback
@@ -13,6 +14,7 @@ class SubFunctions(SpiderEngine):
 
     def selectFunc(self, funcName: str, *args):
         self.logger.info(f"收到命令【{funcName}】,参数为:{args}")
+        dRes = {"ok": 1, "msg": "命令执行成功"}
         if funcName == "repost":
             oPost = self.parseOnePost(args[0])
             self.startRepost(oPost)
@@ -24,11 +26,16 @@ class SubFunctions(SpiderEngine):
             result = self.isInHistory(oPost.uid)
             if result is True:
                 self.logger.info(f"存在已转发的微博{oPost.uid}")
+                dRes["msg"] = f"存在已转发的微博{oPost.uid}"
             else:
                 self.logger.info(f"不存在已转发的微博{oPost.uid}")
+                dRes["msg"] = f"不存在已转发的微博{oPost.uid}"
+
         else:
             self.logger.error(f"找不到函数{funcName}")
-            return
+            dRes["ok"] = 0
+            dRes["msg"] = f"找不到函数{funcName}"
+        return dRes
 
     def repost(self, oPost: CPost, extra_data=None, *args, **kwargs) -> bool:
         """
@@ -47,7 +54,7 @@ class SubFunctions(SpiderEngine):
             self.logger.info(f"开始处理{oPost.userName}({oPost.userUid})的微博 {oPost.Url()}")
         else:
             data = extra_data
-
+    
         if oPost.onlyFans:
             self.logger.info(f"微博仅粉丝可见，不可转载。")
             self.updateHistory(mid)
@@ -92,11 +99,15 @@ class SubFunctions(SpiderEngine):
 if __name__ == '__main__':
     # todo 用argparser来处理
     sf = SubFunctions()
+    dResult = {}
     try:
         if len(sys.argv) <= 1:
             lCmd = input("请输入命令").split()
         else:
             lCmd = sys.argv[1:]
-        sf.selectFunc(*lCmd)
+        dResult = sf.selectFunc(*lCmd)
     except Exception as e:
         sf.logger.error(traceback.format_exc())
+        dResult["ok"] = 0
+        dResult["msg"] = str(e)
+    print(json.dumps(dResult))
