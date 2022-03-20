@@ -24,13 +24,13 @@ class SubFunctions(SpiderEngine):
         self.logger.info(f"收到命令【{funcName}】,参数为:{args}")
         dRes = {"ok": 1, "msg": "命令执行成功"}
         funcType: int = int(funcName)
-        if funcType == FuncsType.repost:
+        if funcType == FuncsType.repost.value:
             oPost = self.parseOnePost(args[0])
             self.startRepost(oPost)
-        elif funcType == FuncsType.dump:
+        elif funcType == FuncsType.dump.value:
             oPost = self.parseOnePost(args[0])
             self.dump_post(oPost, canDuplicable=True)
-        elif funcType == FuncsType.isInHistory:
+        elif funcType == FuncsType.isInHistory.value:
             oPost = self.parseOnePost(args[0])
             result = self.isInHistory(oPost.uid)
             if result is True:
