@@ -18,6 +18,8 @@ if __name__ == '__main__':
                         continue
                     else:
                         wd.updateScanHistory(_oPost.uid)
+                    if _oPost.liveLink():  # 带直播链接的不转发
+                        continue
                     if _oPost.video and _oPost.isRecommend is False:  # 现在只点赞视频
                         wd.startRepost(_oPost)  # 现在只点赞视频
                     elif _oPost.specialTopics():

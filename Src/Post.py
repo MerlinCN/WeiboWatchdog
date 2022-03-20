@@ -77,6 +77,16 @@ class CPost:
     def Url(self) -> str:
         return f"https://m.weibo.cn/detail/{self.uid}"
 
+    def liveLink(self) -> bool:
+        """
+        是否带有直播
+
+        """
+        if self.Text().find("房间号") > 0:
+            return True
+        else:
+            return False
+
     def specialTopics(self) -> bool:
         """
         是否带有超话
