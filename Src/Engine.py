@@ -51,6 +51,7 @@ x-xsrf-token: 1d1b9c
         self.st, self.uid = self.get_st()
         self.allowPost = True
         self.initConn()
+        self.st_times = 0
     
     def initConn(self):
         """
@@ -142,12 +143,19 @@ x-xsrf-token: 1d1b9c
         header = self.add_ref(url)
         r = self.mainSession.get(url, headers=header)
         if r.status_code != 200:  # 转发过多后
+            if self.st_times > 5:
+                self.logger.error("获取st失败")
+                st = self.header["x-xsrf-token"]
+                uid = 0
+                return st, uid
+            time.sleep(1)
+            self.st_times += 1
+            return self.get_st()
+        else:
             data = r.json()
             st = data["data"]["st"]
             uid = int(data['data']['uid'])
-        else:
-            st = self.header["x-xsrf-token"]
-            uid = 0
+            self.st_times = 0
         return st, uid
     
     def refeshToken(self):
@@ -291,10 +299,11 @@ x-xsrf-token: 1d1b9c
             self.logger.error(e)
             barkCall("请求错误", url=oPost.Url())
             return self.repost(oPost, extra_data=data)
-        if r.status_code != 200:  # 转发过多后
+        if r.status_code != 200:
             try:
                 if r.json().get("ok") == 0:
-                    return self.repost(oPost, extra_data=data)
+                    barkCall(f"请求错误 {r.json()['msg']}", url=oPost.Url())
+                    return False
             except Exception as e:
                 self.logger.error(f"请求错误 {r.status_code},{r.text}")
                 barkCall("请求错误", url=oPost.Url())
