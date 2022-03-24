@@ -29,7 +29,7 @@ class CBaiduAPI:  # 百度人体识别API
         try:
             res_ai_json = res_ai.json()
         except Exception as e:
-            self.logger.error(res_ai.text)
+            self.logger.error(res_ai.status_code, res_ai.text)
             barkCall(f"人体识别出错 {res_ai.text}", oPost.Url())
             self.logger.error(e)
             return person_num
