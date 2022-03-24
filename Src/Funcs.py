@@ -26,18 +26,21 @@ class SubFunctions(SpiderEngine):
         funcType: int = int(funcName)
         if funcType == FuncsType.repost.value:
             oPost = self.parseOnePost(args[0])
-            self.startRepost(oPost)
+            if self.startRepost(oPost) is True:
+                dRes["msg"] = f"转发微博成功"
+            else:
+                dRes["msg"] = f"转发微博失败"
         elif funcType == FuncsType.dump.value:
             oPost = self.parseOnePost(args[0])
-            self.dump_post(oPost, canDuplicable=True)
+            if self.dump_post(oPost, canDuplicable=True) is True:
+                dRes["msg"] = f"保存微博成功"
+            else:
+                dRes["msg"] = f"保存微博失败"
         elif funcType == FuncsType.isInHistory.value:
             oPost = self.parseOnePost(args[0])
-            result = self.isInHistory(oPost.uid)
-            if result is True:
-                self.logger.info(f"存在已转发的微博")
+            if self.isInHistory(oPost.uid) is True:
                 dRes["msg"] = f"存在已转发的微博"
             else:
-                self.logger.info(f"不存在已转发的微博")
                 dRes["msg"] = f"不存在已转发的微博"
         
         else:
