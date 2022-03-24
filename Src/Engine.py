@@ -287,9 +287,13 @@ x-xsrf-token: 1d1b9c
         self.header["x-xsrf-token"] = st
         r = self.mainSession.post(url, data=data, headers=self.header)
         if r.status_code != 200:  # 转发过多后
-            self.logger.error(f"请求错误 {r.status_code},{r.text}")
-            barkCall("请求错误", url=oPost.Url())
-            return False
+            try:
+                if r.json().get("ok") == 0:
+                    return self.repost(oPost, extra_data=data)
+            except Exception as e:
+                self.logger.error(f"请求错误 {r.status_code},{r.text}")
+                barkCall("请求错误", url=oPost.Url())
+                return False
         try:
             if r.json().get("ok") == 1:
                 self.logger.info(f'转发微博成功')
@@ -438,7 +442,7 @@ x-xsrf-token: 1d1b9c
             self.logger.info(f"图片最大size为{iMaxImageSize / 1e6}mb 小于{threshold / 1e6}mb")
         elif iMaxImageSize >= threshold:
             self.logger.info(f"图片最大size为{iMaxImageSize / 1e6}mb 大于等于{threshold / 1e6}mb")
-        if iMaxImageSize >= threshold or oPost.livePhotos or oPost.video:
+        if iMaxImageSize >= threshold or oPost.livePhotos or oPost.video or canDuplicable:
             self.afterDumpPost(savePath)
             return True
         else:

@@ -1,8 +1,32 @@
+import io
+import sys
 from typing import Dict, List
 
 import requests
 
 import Config
+
+
+class MyPrint(io.TextIOWrapper):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+    
+    def write(self, text: str):
+        text = text.rstrip()
+        if len(text) == 0: return
+        if text.startswith("{"):
+            text = f"{text}\n"
+            super(MyPrint, self).write(text)
+
+
+encoding = sys.stdout.encoding
+errors = sys.stdout.errors
+newline = sys.platform != 'win32' and '\n' or None
+line_buffering = sys.stdout.line_buffering
+
+sys.stdout = MyPrint(
+    sys.stdout.detach(), 'utf-8', errors, newline, line_buffering
+)
 
 
 def byte2Headers(headers_raw: bytes) -> Dict[str, str]:
