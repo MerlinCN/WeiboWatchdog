@@ -141,13 +141,16 @@ x-xsrf-token: 1d1b9c
         url = "https://m.weibo.cn/api/config"
         header = self.add_ref(url)
         r = self.mainSession.get(url, headers=header)
-        data = r.json()
-        isLogin = data['data']['login']
-        if not isLogin:
-            raise Exception("未登录")
-        st = data["data"]["st"]
-        uid = int(data['data']['uid'])
-
+        try:
+            data = r.json()
+            st = data["data"]["st"]
+            uid = int(data['data']['uid'])
+        except Exception as e:
+            barkCall(f"获取st失败")
+            self.logger.error(r.text)
+            self.logger.error(e)
+            st = self.header["x-xsrf-token"]
+            uid = 0
         return st, uid
     
     def refeshToken(self):
