@@ -285,7 +285,12 @@ x-xsrf-token: 1d1b9c
         # 这里一定要加referer， 不加会变成不合法的请求
         self.add_ref(f"https://m.weibo.cn/compose/repost?id={mid}")
         self.header["x-xsrf-token"] = st
-        r = self.mainSession.post(url, data=data, headers=self.header)
+        try:
+            r = self.mainSession.post(url, data=data, headers=self.header)
+        except requests.exceptions.ConnectionError as e:
+            self.logger.error(e)
+            barkCall("请求错误", url=oPost.Url())
+            return self.repost(oPost, extra_data=data)
         if r.status_code != 200:  # 转发过多后
             try:
                 if r.json().get("ok") == 0:
