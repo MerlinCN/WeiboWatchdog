@@ -14,7 +14,7 @@ def initLogger(myLogger: Logger, printLog: bool):
     f_handler = logging.handlers.TimedRotatingFileHandler(log_path + '/Main', encoding='utf8')
     f_handler.suffix = "%Y%m%d_%H.log"
     f_handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(filename)s[:%(lineno)d] - %(message)s"))
-    f_handler.doRollover()
+    # f_handler.doRollover()
     if printLog:
         myLogger.addHandler(s_handler)
     myLogger.addHandler(f_handler)
