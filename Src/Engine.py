@@ -309,7 +309,7 @@ x-xsrf-token: 1d1b9c
                 self.logger.error(
                     f'转发微博失败 \n {err["msg"]} \n {r.json()}')
                 barkCall(f'转发微博失败 {err["msg"]}', url=oPost.Url())
-                if errno == '20016':  # 转发频率过高，等一会儿就好
+                if errno == '20016' and self.allowPost is True:  # 转发频率过高，等一会儿就好
                     self.allowPost = False
                     tm = Timer(60 * 30, self.openAllow, args=[self])
                     tm.start()
