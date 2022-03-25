@@ -201,31 +201,32 @@ class SpiderEngine:
         if oWeibo.original_weibo is None:
             isInScanHistory = self.isInScanHistory(oWeibo.weibo_id())
             if isInScanHistory:  # 单次扫描
-                return False
+                return True
             else:
                 self.updateScanHistory(oWeibo.weibo_id())
         else:
             isInScanHistory = self.isInScanHistory(oWeibo.original_weibo.weibo_id())
             if isInScanHistory:  # 单次扫描
-                return False
+                return True
             else:
                 self.updateScanHistory(oWeibo.original_weibo.weibo_id())
-        return True
-    
+        return False
+
     async def is_repost(self, oWeibo: Weibo) -> bool:
-        if self.is_had_scan(oWeibo):
-            return False
+        # if self.is_had_scan(oWeibo) is True:
+        #     return False
         self.logger.info(f"开始处理微博 {oWeibo.detail_url()}")
         if oWeibo.original_weibo is None:
             if len(oWeibo.image_list()) < 3:
                 return False
-            if oWeibo.raw_text().find("房间号") > 0:  # 带直播链接的不转发
+            if oWeibo.full_text().find("房间号") > 0:  # 带直播链接的不转发
                 return False
             if oWeibo.video_url():
+                await self.dump_post(oWeibo)
                 return False
             if not oWeibo.is_visible():
                 return False
-            if oWeibo.raw_text().find("超话") > 0:  #
+            if oWeibo.full_text().find("超话") > 0:  #
                 return True
             if await self.detection(oWeibo):
                 return True
@@ -233,3 +234,5 @@ class SpiderEngine:
             lSp = readSpecialUsers()
             if oWeibo.user_uid() in lSp:
                 return True
+            return False
+        return False
