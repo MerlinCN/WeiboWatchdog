@@ -1,10 +1,5 @@
-import sys
-
 from Engine import SpiderEngine
-from Util import readCookies, is_debug
-
-if is_debug():
-    sys.path.append(r"F:\Coding\Python\WeiboBot")
+from Util import readCookies
 
 from WeiboBot import Bot
 from WeiboBot.weibo import Weibo
