@@ -214,7 +214,6 @@ class SpiderEngine:
 
     async def is_repost(self, oWeibo: Weibo) -> bool:
         if oWeibo.original_weibo is None:
-    
             if len(oWeibo.image_list()) < 3:
                 return False
             if oWeibo.full_text().find("房间号") > 0:  # 带直播链接的不转发
@@ -224,8 +223,6 @@ class SpiderEngine:
                 return False
             if not oWeibo.is_visible():
                 return False
-            if oWeibo.full_text().find("超话") > 0:  #
-                return True
             if await self.detection(oWeibo):
                 return True
         else:
