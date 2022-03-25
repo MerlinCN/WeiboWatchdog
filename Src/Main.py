@@ -10,11 +10,12 @@ wd = SpiderEngine(loggerName="MainLoop")
 
 @myBot.onNewWeibo
 async def onNewWeibo(weibo: Weibo):
+    if wd.is_had_scan(weibo) is True:
+        return False
     is_repost = await wd.is_repost(weibo)
     if is_repost is False:
-        wd.logger.info(f"未满足条件,不转载")
-        wd.logger.info(f"结束处理微博 {weibo.detail_url()}")
         return
+    wd.logger.info(f"开始处理微博 {weibo.detail_url()}")
     is_large_image = await wd.dump_post(weibo)
     if not is_large_image:
         wd.logger.info(f"图片/视频太小,不转载")

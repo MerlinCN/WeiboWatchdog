@@ -213,10 +213,8 @@ class SpiderEngine:
         return False
 
     async def is_repost(self, oWeibo: Weibo) -> bool:
-        if self.is_had_scan(oWeibo) is True:
-            return False
-        self.logger.info(f"开始处理微博 {oWeibo.detail_url()}")
         if oWeibo.original_weibo is None:
+    
             if len(oWeibo.image_list()) < 3:
                 return False
             if oWeibo.full_text().find("房间号") > 0:  # 带直播链接的不转发
