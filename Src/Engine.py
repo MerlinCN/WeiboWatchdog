@@ -1,22 +1,16 @@
-import json
 import os
 import random
-import re
 import sqlite3
 import sys
-import time
 from multiprocessing import Process
-from threading import Timer
-from typing import Dict, Union, Tuple
 
-import ddddocr
 import requests
 
 from AITool import CBaiduAPI
 from MyLogger import getLogger
 from PCS import uploadFiles
-from Post import CPost
-from Util import byte2Headers, readCookies, barkCall
+from Util import readSpecialUsers
+from WeiboBot.weibo import Weibo
 
 
 class SpiderEngine:
@@ -24,34 +18,8 @@ class SpiderEngine:
     def __init__(self, loggerName: str, printLog=True):
         self.logger = getLogger(loggerName, printLog)
         self.oAIAPI = CBaiduAPI()
-        self.mainSession = requests.session()
         self.conn = sqlite3.connect("history.db")
-        self.header: Dict[str, Union[str, int]]
-        self.header = byte2Headers(b'''
-        accept: application/json, text/plain, */*
-accept-encoding: gzip, deflate, br
-accept-language: zh-CN,zh;q=0.9
-cookie: %b
-mweibo-pwa: 1
-referer: https://m.weibo.cn/
-sec-ch-ua: " Not A;Brand";v="99", "Chromium";v="96", "Google Chrome";v="96"
-sec-ch-ua-mobile: ?0
-sec-ch-ua-platform: "Windows"
-sec-fetch-dest: empty
-sec-fetch-mode: cors
-sec-fetch-site: same-origin
-user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.110 Safari/537.36
-x-requested-with: XMLHttpRequest
-x-xsrf-token: 1d1b9c
-        ''' % readCookies())
-        
-        self.cookies = self.header["cookie"]
-        self.thisPagePost: Dict[int, CPost] = {}  # 主页的微博
-        self.thisRecommendPagePost: Dict[int, CPost] = {}  # 热门推荐的微博
-        self.st, self.uid = self.get_st()
-        self.allowPost = True
         self.initConn()
-        self.st_times = 0
     
     def initConn(self):
         """
@@ -122,283 +90,18 @@ x-xsrf-token: 1d1b9c
         cursor.close()
         return len(values) > 0
     
-    def get_header(self) -> Dict[str, Union[str, int]]:
-        return self.header
-    
-    def add_header_param(self, key: str, value: str) -> Dict[str, Union[str, int]]:
-        header = self.get_header()
-        header[key] = value
-        return header
-    
-    def add_ref(self, value: str) -> Dict[str, Union[str, int]]:
-        return self.add_header_param("referer", value)
-    
-    def get_st(self) -> Tuple[str, int]:
-        """
-        获得session token
-
-        :return: session token和当前用户uid
-        """
-        url = "https://m.weibo.cn/api/config"
-        header = self.add_ref(url)
-        r = self.mainSession.get(url, headers=header)
-        if r.status_code != 200:  # 转发过多后
-            if self.st_times > 5:
-                self.logger.error("获取st失败")
-                st = self.header["x-xsrf-token"]
-                uid = 0
-                return st, uid
-            time.sleep(1)
-            self.st_times += 1
-            return self.get_st()
-        else:
-            data = r.json()
-            st = data["data"]["st"]
-            uid = int(data['data']['uid'])
-            self.st_times = 0
-        return st, uid
-    
-    def refeshToken(self):
-        st, _ = self.get_st()
-        self.header["x-xsrf-token"] = st
-        return self.header
-    
-    def refreshPage(self):
-        """
-        刷新主页
-        """
-        st, _ = self.get_st()
-        url = "https://m.weibo.cn/feed/friends?"
-        header = self.add_ref("https://m.weibo.cn/")
-        self.header["x-xsrf-token"] = st
-        r = self.mainSession.get(url, headers=header)
-        self.thisPagePost = {}
-        try:
-            data = r.json()
-            if r.json().get("ok") == 1:
-                for dPost in data["data"]["statuses"]:
-                    _oPost = CPost(dPost)
-                    self.thisPagePost[_oPost.uid] = _oPost
-                return True
-            else:
-                self.logger.error(f"刷新主页失败 err = {data}")
-                return False
-        except Exception as e:
-            self.logger.error(r.text)
-            self.logger.error(e)
-            time.sleep(30)
-            self.refreshPage()
-    
-    def refreshRecommend(self):
-        """
-        刷新热门推荐(会包含广告)
-
-        :return:是否成功
-        """
-        st, _ = self.get_st()
-        url = "https://m.weibo.cn/api/container/getIndex?containerid=102803&openApp=0"
-        header = self.add_ref("https://m.weibo.cn/")
-        self.header["x-xsrf-token"] = st
-        r = self.mainSession.get(url, headers=header)
-        self.thisRecommendPagePost = {}
-        try:
-            data = r.json()
-            if r.json().get("ok") == 1:
-                for dPost in data["data"]["cards"]:
-                    _oPost = CPost(dPost["mblog"], isRecommend=True)
-                    self.thisRecommendPagePost[_oPost.uid] = _oPost
-                return True
-            else:
-                self.logger.error(f"刷新热门失败 err = {data}")
-                return False
-        except Exception as e:
-            self.logger.error(r.text)
-            self.logger.error(e)
-            time.sleep(60)
-            self.refreshRecommend()
-    
-    def like(self, oPost: CPost) -> bool:
-        """
-        点赞
-
-        :param oPost: 微博
-        :return: 是否成功
-        """
-        st, _ = self.get_st()
-        mid = oPost.uid
-        url = "https://m.weibo.cn/api/attitudes/create"
-        data = {"id": mid, "attitude": "heart", "st": st, "_spr": "screen:2560x1440"}
-        self.add_ref(f"https://m.weibo.cn")
-        self.header["x-xsrf-token"] = st
-        r = self.mainSession.post(url, data=data, headers=self.header)
-        try:
-            if r.json().get("ok") == 1:
-                self.logger.info(f'点赞成功')
-                return True
-            else:
-                self.logger.info(f'点赞失败')
-                return False
-        except Exception as e:
-            self.logger.error(r.json())
-            self.logger.error(e)
-    
-    def startRepost(self, oPost: CPost):
-        """
-        开始转发微博
-
-        :param oPost: 微博
-        :return: 是否成功
-        """
-        bResult = self.repost(oPost)
-        self.logger.info(f"结束处理{oPost.userName}({oPost.userUid})的微博 {oPost.Url()}")
-        return bResult
-    
-    def repost(self, oPost: CPost, extra_data=None) -> bool:
-        """
-        转发微博
-
-        :param oPost: 微博
-        :param extra_data: 包含验证码的载荷
-        :return: 是否成功
-        """
-        st, _ = self.get_st()
-        url = "https://m.weibo.cn/api/statuses/repost"
-        content = "转发微博"
-        mid = oPost.uid
-        if not extra_data:
-            data = {"id": mid, "content": content, "mid": mid, "st": st, "_spr": "screen:2560x1440"}
-            self.logger.info(f"开始处理{oPost.userName}({oPost.userUid})的微博 {oPost.Url()}")
-        else:
-            data = extra_data
-
-        repostable = self.dump_post(oPost)
-        if not repostable:
-            self.logger.info(f"微博太小，不转载。")
-            return False
-        if oPost.onlyFans:
-            self.logger.info(f"微博仅粉丝可见，不可转载。")
-            self.like(oPost)
-            return False
-        if self.allowPost is False:
-            self.logger.info(f"不转载状态")
-            self.like(oPost)
-            return False
-        if oPost.video:
-            self.logger.info(f"视频微博,不转载")
-            self.like(oPost)
-            return False
-        if len(oPost.images) >= 6:
-            data["content"] = self.randomComment()
-            data["dualPost"] = 1
-        # 这里一定要加referer， 不加会变成不合法的请求
-        self.add_ref(f"https://m.weibo.cn/compose/repost?id={mid}")
-        self.header["x-xsrf-token"] = st
-        try:
-            r = self.mainSession.post(url, data=data, headers=self.header)
-        except requests.exceptions.ConnectionError as e:
-            self.logger.error(e)
-            barkCall("请求错误", url=oPost.Url())
-            return self.repost(oPost, extra_data=data)
-        if r.status_code != 200:
-            try:
-                if r.json().get("ok") == 0:
-                    barkCall(f"请求错误 {r.json()['msg']}", url=oPost.Url())
-                    return False
-            except Exception as e:
-                self.logger.error(f"请求错误 {r.status_code},{r.text}")
-                barkCall("请求错误", url=oPost.Url())
-                return False
-        try:
-            if r.json().get("ok") == 1:
-                self.logger.info(f'转发微博成功')
-                self.updateHistory(mid)
-                self.like(oPost)
-                time.sleep(10)
-                return True
-            else:
-                err = r.json()
-                error_type = err["error_type"]
-                errno = err["errno"]
-                if error_type == "captcha":  # 需要验证码
-                    code = self.solve_captcha()
-                    data["_code"] = code
-                    time.sleep(5)
-                    return self.repost(oPost, extra_data=data)
-                self.logger.error(
-                    f'转发微博失败 \n {err["msg"]} \n {r.json()}')
-                barkCall(f'转发微博失败 {err["msg"]}', url=oPost.Url())
-                if errno == '20016' and self.allowPost is True:  # 转发频率过高，等一会儿就好
-                    self.allowPost = False
-                    tm = Timer(60 * 30, self.openAllow, args=[self])
-                    tm.start()
-                    return False
-                else:
-                    time.sleep(30)
-                return False
-
-        except Exception as e:
-            self.logger.error(r.text)
-            self.logger.error(e)
-            return self.repost(oPost, extra_data=data)
-    
-    def openAllow(self):
-        self.allowPost = True
-    
-    def solve_captcha(self) -> str:
-        """
-        处理验证码
-
-        :return: 验证码识别结果(30%左右成功，但可多次尝试)
-        """
-        nowTime = int(time.time() * 1000)
-        url = f"https://m.weibo.cn/api/captcha/show?t={nowTime}"
-        self.add_ref("https://m.weibo.cn/sw.js")
-        res = self.mainSession.get(url, headers=self.header)
-        ocr = ddddocr.DdddOcr(show_ad=False)
-        result = ocr.classification(res.content)
-        self.logger.info(f"识别验证码为:{result}")
-        if len(result) != 4:
-            self.solve_captcha()
-        else:
-            return result
-    
-    def update_detail(self, oPost: CPost) -> bool:
-        """
-        更新全文
-
-        :param oPost: 微博
-        :return: 是否成功
-        """
-        mid = oPost.uid
-        url = f"https://m.weibo.cn/statuses/extend?id={mid}"
-        st, _ = self.get_st()
-        self.add_ref(oPost.Url())
-        self.header["x-xsrf-token"] = st
-        r = self.mainSession.get(url, headers=self.header)
-        responseJson = r.json()
-        try:
-            if responseJson.get("ok") == 1:
-                self.logger.info(f'更新全文成功')
-                oPost.text = responseJson["data"]["longTextContent"]
-                return True
-            else:
-                self.logger.error(f'更新全文失败')
-                return False
-        except Exception as e:
-            self.logger.error(responseJson)
-            self.logger.error(e)
-    
-    def dump_post(self, oPost: CPost, canDuplicable=False) -> bool:
+    async def dump_post(self, oWeibo: Weibo, canDuplicable=False) -> bool:
         """
         保存微博，并且判断微博图片大小
 
         :param canDuplicable: 能否重复保存
-        :param oPost: 微博
+        :param oWeibo: 微博
         :return: 是否应该转发
         """
-        rootPath = f"Data/{oPost.userName}/{oPost.uid}"
-        videoPath = f"Video/{oPost.userName}/{oPost.uid}"
-        if oPost.video:
+        userName = oWeibo.user['screen_name']
+        rootPath = f"Data/{userName}/{oWeibo.id}"
+        videoPath = f"Video/{userName}/{oWeibo.id}"
+        if oWeibo.video_url():
             savePath = videoPath
         else:
             savePath = rootPath
@@ -408,37 +111,35 @@ x-xsrf-token: 1d1b9c
             os.makedirs(savePath)
         elif canDuplicable is False:
             return True
-        contextName = f"{savePath}/{oPost.uid}.txt"
-        if oPost.Text().find("全文") > 0:
-            self.update_detail(oPost)
+        contextName = f"{savePath}/{oWeibo.id}.txt"
         with open(contextName, 'w', encoding="utf8") as f:
-            f.write(f"{oPost.userName}\n")
-            f.write(f"{oPost.createdTime}\n")
-            f.write(oPost.Text() + '\n')
-            for livePhoto in oPost.livePhotos:
+            f.write(f"{userName}\n")
+            f.write(f"{oWeibo.created_at}\n")
+            f.write(oWeibo.text + '\n')
+            for livePhoto in oWeibo.live_photo:
                 f.write(livePhoto + '\n')
-            if oPost.video:
-                f.write(oPost.video)
-
+            if oWeibo.video_url():
+                f.write(oWeibo.video_url())
+        
         try:
-            if oPost.video:
-                video_res = requests.get(oPost.video)
-                with open(f"{savePath}/{oPost.uid}.mp4", 'wb') as f:
+            if oWeibo.video_url():
+                video_res = requests.get(oWeibo.video_url())
+                with open(f"{savePath}/{oWeibo.id}.mp4", 'wb') as f:
                     f.write(video_res.content)
                 self.logger.info(f"保存微博视频成功")
         except Exception as e:
             self.logger.error(e)
-
+        
         try:
-            for idx, livePhoto in enumerate(oPost.livePhotos):
+            for idx, livePhoto in enumerate(oWeibo.live_photo):
                 livePhoto_res = requests.get(livePhoto)
                 with open(f"{savePath}/livephoto_{idx + 1}.mov", 'wb') as f:
                     f.write(livePhoto_res.content)
                 self.logger.info(f"保存微博LivePhotos{idx + 1}成功")
         except Exception as e:
             self.logger.error(e)
-
-        for idx, image in enumerate(oPost.images):
+        
+        for idx, image in enumerate(oWeibo.image_list()):
             try:
                 imageName = image.split('/').pop()
                 res = requests.get(image)
@@ -450,13 +151,13 @@ x-xsrf-token: 1d1b9c
             except Exception as e:
                 self.logger.error(e)
             self.logger.info(f"保存微博图片{idx + 1}成功")
-
+        
         self.logger.info(f"保存微博内容成功")
-        if iMaxImageSize < threshold and oPost.images:
+        if iMaxImageSize < threshold and oWeibo.image_list():
             self.logger.info(f"图片最大size为{iMaxImageSize / 1e6}mb 小于{threshold / 1e6}mb")
         elif iMaxImageSize >= threshold:
             self.logger.info(f"图片最大size为{iMaxImageSize / 1e6}mb 大于等于{threshold / 1e6}mb")
-        if iMaxImageSize >= threshold or oPost.livePhotos or oPost.video or canDuplicable:
+        if iMaxImageSize >= threshold or oWeibo.live_photo or oWeibo.video_url() or canDuplicable:
             self.afterDumpPost(savePath)
             return True
         else:
@@ -468,41 +169,67 @@ x-xsrf-token: 1d1b9c
         p = Process(target=uploadFiles, args=(savePath,))  # 非阻塞，开个进程用于上传到云盘
         p.start()
     
-    def detection(self, oPost: CPost) -> bool:
+    async def detection(self, oWeibo: Weibo) -> bool:
         """
         检测图片中的人来判断是否应该转发
 
-        :param oPost:微博
+        :param oWeibo:微博
         :return:是否应该转发
         """
-        if not oPost.thumbnail_images:  # 用缩略图来做识别（API限制4M)
+        if not oWeibo.thumbnail_image_list():  # 用缩略图来做识别（API限制4M)
             return False
-        for image in oPost.thumbnail_images:
-            human_num = self.oAIAPI.detection(image, oPost)
+        for image in oWeibo.thumbnail_image_list():
+            human_num = await self.oAIAPI.detection(image, oWeibo)
             if human_num >= 1:
-                self.logger.info(f"微博 {oPost.Url()} 检测到人体 {human_num}")
+                self.logger.info(f"微博 {oWeibo.detail_url()} 检测到人体 {human_num}")
                 return True
-
-        self.logger.info(f"微博 {oPost.Url()} 未检测到人体 ")
+        
+        self.logger.info(f"微博 {oWeibo.detail_url()} 未检测到人体 ")
         return False
     
-    def parseOnePost(self, sPostUrl: str) -> Union[CPost, None]:
-        if sPostUrl.isdigit():
-            sUrl = f"https://m.weibo.cn/detail/{sPostUrl}"
-        else:
-            sUrl = sPostUrl
-        try:
-            r = self.mainSession.get(sUrl, headers=self.header)
-            dPost = json.loads(re.findall(r'(?<=render_data = \[)[\s\S]*(?=\]\[0\])', r.text)[0])["status"]
-            oPost = CPost(dPost)
-        except Exception as e:
-            self.logger.error(e)
-            return None
-        return oPost
-
     @staticmethod
-    def randomComment() -> str:
+    def randomComment(oWeibo: Weibo) -> str:
+        if len(oWeibo.image_list()) < 6:
+            return "转发微博"
+        
         lComments = ["[打call]", "[羞嗒嗒]", "[awsl]", "[赢牛奶]", "[心]", "[好喜欢]",
                      "[求关注]", "[哆啦A梦花心]", "[送花花]", "[彩虹屁]", "[哇]"]
         sComment = random.choice(lComments) * random.randint(1, 3)
         return sComment
+    
+    def is_had_scan(self, oWeibo: Weibo) -> bool:
+        if oWeibo.original_weibo is None:
+            isInScanHistory = self.isInScanHistory(oWeibo.weibo_id())
+            if isInScanHistory:  # 单次扫描
+                return False
+            else:
+                self.updateScanHistory(oWeibo.weibo_id())
+        else:
+            isInScanHistory = self.isInScanHistory(oWeibo.original_weibo.weibo_id())
+            if isInScanHistory:  # 单次扫描
+                return False
+            else:
+                self.updateScanHistory(oWeibo.original_weibo.weibo_id())
+        return True
+    
+    async def is_repost(self, oWeibo: Weibo) -> bool:
+        if self.is_had_scan(oWeibo):
+            return False
+        self.logger.info(f"开始处理微博 {oWeibo.detail_url()}")
+        if oWeibo.original_weibo is None:
+            if len(oWeibo.image_list()) < 3:
+                return False
+            if oWeibo.raw_text().find("房间号") > 0:  # 带直播链接的不转发
+                return False
+            if oWeibo.video_url():
+                return False
+            if not oWeibo.is_visible():
+                return False
+            if oWeibo.raw_text().find("超话") > 0:  #
+                return True
+            if await self.detection(oWeibo):
+                return True
+        else:
+            lSp = readSpecialUsers()
+            if oWeibo.user_uid() in lSp:
+                return True

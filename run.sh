@@ -1,1 +1,1 @@
-nohup python3 Src/Main.py >MainLoop &
+nohup python3 Src/Main.py >/dev/null &

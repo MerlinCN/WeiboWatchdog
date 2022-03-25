@@ -1,49 +1,33 @@
-import time
-import traceback
+import sys
 
 from Engine import SpiderEngine
-from Util import barkCall, readSpecialUsers
+from Util import readCookies, is_debug
+
+if is_debug():
+    sys.path.append(r"F:\Coding\Python\WeiboBot")
+
+from WeiboBot import Bot
+from WeiboBot.weibo import Weibo
+
+myBot = Bot(cookies=readCookies())
+wd = SpiderEngine(loggerName="MainLoop")
+
+
+@myBot.onNewWeibo
+async def onNewWeibo(weibo: Weibo):
+    is_repost = await wd.is_repost(weibo)
+    if is_repost is False:
+        return
+    is_large_image = await wd.dump_post(weibo)
+    if not is_large_image:
+        return
+    comment = wd.randomComment(weibo)
+    is_dual = len(weibo.image_list()) > 6
+    
+    await myBot.like(weibo.id)
+    await myBot.repost_action(weibo.id, content=comment, dualPost=is_dual)
+    wd.logger.info(f"结束处理微博 {weibo.detail_url()}")
+
 
 if __name__ == '__main__':
-    wd = SpiderEngine(loggerName="MainLoop")
-    barkCall("启动成功")
-    while 1:
-        try:
-            wd.refreshPage()
-            iStartTime = time.time()
-            for _oPost in wd.thisPagePost.values():
-                if _oPost.isOriginPost():
-                    isInScanHistory = wd.isInScanHistory(_oPost.uid)
-                    if isInScanHistory:  # 单次扫描
-                        continue
-                    else:
-                        wd.updateScanHistory(_oPost.uid)
-                    if _oPost.liveLink():  # 带直播链接的不转发
-                        continue
-                    if _oPost.video and _oPost.isRecommend is False:  # 现在只点赞视频
-                        wd.startRepost(_oPost)  # 现在只点赞视频
-                    elif _oPost.specialTopics():
-                        wd.startRepost(_oPost)
-                    elif wd.detection(_oPost):  # 检测到图片中有人且大小满足
-                        wd.startRepost(_oPost)
-                else:  # 如果不是原创微博
-                    lSp = readSpecialUsers()  # 只转发别人微博的博主
-                    if _oPost.userUid not in lSp:
-                        continue
-                    isInScanHistory = wd.isInScanHistory(_oPost.originPost.uid)
-                    if isInScanHistory:  # 单次扫描
-                        continue
-                    else:
-                        wd.updateScanHistory(_oPost.originPost.uid)
-                    if wd.detection(_oPost.originPost) or _oPost.originPost.video:
-                        wd.startRepost(_oPost.originPost)
-            iGap = time.time() - iStartTime
-            if iGap <= 60:
-                interval = 60 - iGap
-            else:
-                interval = 0
-            wd.logger.info("Heartbeat")
-            time.sleep(interval)
-        except Exception as e:
-            wd.logger.error(traceback.format_exc())
-            barkCall(e)
+    myBot.run()

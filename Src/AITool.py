@@ -3,8 +3,8 @@ import base64
 import requests
 
 from MyLogger import getLogger
-from Post import CPost
 from Util import readAIKey, barkCall
+from WeiboBot import Weibo
 
 
 class CBaiduAPI:  # 百度人体识别API
@@ -17,34 +17,27 @@ class CBaiduAPI:  # 百度人体识别API
         self.access_token = root_res.json()["access_token"]
         self.header = {'content-type': 'application/x-www-form-urlencoded'}
         self.detection_url = "https://aip.baidubce.com/rest/2.0/image-classify/v1/body_attr"
-    
-    def detection(self, image_url: str, oPost: CPost) -> int:
+
+    async def detection(self, image_url: str, oWeibo: Weibo) -> int:
         res_image = self.session.get(image_url)
         person_num = 0
         if res_image.status_code != 200:  # QPS过高
             barkCall(f"人体识别出错 {image_url}")
             return person_num
-        data = {"access_token": self.access_token, "image": base64.b64encode(res_image.content)}
-        res_ai = requests.post(self.detection_url, data=data, headers=self.header)
+        params = {"access_token": self.access_token, "image": base64.b64encode(res_image.content)}
+        result = requests.post(self.detection_url, data=params, headers=self.header)
         try:
-            res_ai_json = res_ai.json()
+            data = result.json()
         except Exception as e:
-            self.logger.error(res_ai.status_code, res_ai.text)
-            barkCall(f"人体识别出错 {res_ai.text}", oPost.Url())
+            self.logger.error(result.status_code, result.text)
+            barkCall(f"人体识别出错 {result.text}", oWeibo.detail_url())
             self.logger.error(e)
             return person_num
-        try:
-            # 先看多少人，在看男性人数
-            person_num_o = res_ai_json["person_num"]
-            if person_num_o >= 1:
-                person_info = res_ai_json["person_info"]
-                for person in person_info:
-                    if person['attributes']['is_human']["score"] >= 0.7 \
-                            and person['attributes']['is_human']["name"] == "正常人体":
-                        person_num += 1
-            return person_num
-        except Exception as e:
-            self.logger.error(res_ai_json)
-            self.logger.error(e)
-            barkCall(f"人体识别出错 {res_ai_json}")
-            return person_num
+        person_num_o = data["person_num"]
+        if person_num_o >= 1:
+            person_info = data["person_info"]
+            for person in person_info:
+                if person['attributes']['is_human']["score"] >= 0.7 \
+                        and person['attributes']['is_human']["name"] == "正常人体":
+                    person_num += 1
+        return person_num
