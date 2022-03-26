@@ -1,1 +1,1 @@
-python WeiboWatchDog/main.py
+python WeiboWatchdog/main.py
