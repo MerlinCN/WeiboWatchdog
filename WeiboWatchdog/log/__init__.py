@@ -18,8 +18,8 @@ class Log(Logger):
             log_path = f"{os.getcwd()}/Log/{name}/"
             if not os.path.exists(log_path):
                 os.makedirs(log_path)
-            f_handler = logging.handlers.TimedRotatingFileHandler(log_path + f'/WeiboBot.log', encoding='utf8')
-            f_handler.suffix = ".%Y%m%d_%H"
+            f_handler = logging.handlers.TimedRotatingFileHandler(log_path + f'/{name}.log', encoding='utf8')
+            f_handler.suffix = ".%Y%m%d_%H.log"
             f_handler.setFormatter(
                 logging.Formatter(
                     f"%(asctime)s - %(levelname)s - {module_name}[%(funcName)s][:%(lineno)d] - %(message)s"))
