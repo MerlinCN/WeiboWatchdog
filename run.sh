@@ -1,1 +1,1 @@
-nohup python3 WeiboWatchDog/Main.py >/dev/null &
+nohup python3 WeiboWatchDog/main.py >/dev/null &
