@@ -213,15 +213,15 @@ class SpiderEngine:
     
     async def is_repost(self, oWeibo: Weibo) -> bool:
         if oWeibo.original_weibo is None:
+            if oWeibo.video_url():
+                self.logger.info(f"微博带视频,不转发")
+                await self.dump_post(oWeibo)
+                return False
             if len(oWeibo.image_list()) < 3:
                 self.logger.info(f"微博 图片数量小于3张,不转发")
                 return False
             if oWeibo.full_text().find("房间号") > 0:  # 带直播链接的不转发
                 self.logger.info(f"微博带直播链接,不转发")
-                return False
-            if oWeibo.video_url():
-                self.logger.info(f"微博带视频,不转发")
-                await self.dump_post(oWeibo)
                 return False
             if not oWeibo.is_visible():
                 self.logger.info(f"微博不可见,不转发")
