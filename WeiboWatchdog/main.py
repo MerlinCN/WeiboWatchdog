@@ -21,8 +21,11 @@ def select_comment(weibo: Weibo):
 @myBot.onNewWeibo
 async def onNewWeibo(weibo: Weibo):
     try:
+        wd.logger.info(f"检测是否已经扫描过微博 {weibo.detail_url()}")
         if wd.is_had_scan(weibo) is True:
+            wd.logger.info(f"已经扫描过微博 {weibo.detail_url()}")
             return False
+        wd.logger.info(f"未扫描过微博 {weibo.detail_url()}")
         is_repost = await wd.is_repost(weibo)
         if is_repost is False:
             return
