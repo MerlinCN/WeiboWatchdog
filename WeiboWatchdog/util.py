@@ -7,8 +7,6 @@ import config
 
 
 def read_cookies():
-    if config.Cookies == "":
-        raise Exception("请填入Cookies")
     return config.Cookies
 
 

@@ -4,7 +4,7 @@ from multiprocessing import Process
 
 from bypy import ByPy
 
-from WeiboWatchdog.log import get_logger
+from log import get_logger
 
 
 class MyByPy(ByPy):

@@ -3,7 +3,7 @@ import base64
 import requests
 
 from WeiboBot import Weibo
-from WeiboWatchdog.log import get_logger
+from log import get_logger
 from util import read_ai_key, bark_call
 
 
