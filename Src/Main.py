@@ -23,9 +23,9 @@ async def onNewWeibo(weibo: Weibo):
         return
     comment = wd.randomComment(weibo)
     is_dual = len(weibo.image_list()) > 6
-    
-    await myBot.like(weibo.id)
-    await myBot.repost_action(weibo.id, content=comment, dualPost=is_dual)
+
+    await myBot.like_weibo(weibo.id)
+    myBot.repost_action(weibo.id, content=comment, dualPost=is_dual)
     wd.logger.info(f"结束处理微博 {weibo.detail_url()}")
 
 
