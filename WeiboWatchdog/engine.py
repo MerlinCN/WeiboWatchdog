@@ -2,25 +2,25 @@ import os
 import random
 import sqlite3
 import sys
-from multiprocessing import Process
 
 import requests
 
-from AITool import CBaiduAPI
-from MyLogger import getLogger
-from PCS import uploadFiles
-from Util import readSpecialUsers
+import bypy_tool
 from WeiboBot.weibo import Weibo
+from ai_tool import BaiduAPI
+from log import get_logger
+from util import read_special_users
 
 
 class SpiderEngine:
     
-    def __init__(self, loggerName: str, printLog=True):
-        self.logger = getLogger(loggerName, printLog)
-        self.oAIAPI = CBaiduAPI()
+    def __init__(self, loggerName: str):
+        self.logger = get_logger(loggerName, module_name=__name__)
+        self.ai_tool = BaiduAPI()
         self.conn = sqlite3.connect("history.db")
         self.initConn()
     
+    # region 数据库操作
     def initConn(self):
         """
         初始化表
@@ -90,6 +90,8 @@ class SpiderEngine:
         cursor.close()
         return len(values) > 0
     
+    # endregion
+    
     async def dump_post(self, oWeibo: Weibo, canDuplicable=False) -> bool:
         """
         保存微博，并且判断微博图片大小
@@ -158,16 +160,12 @@ class SpiderEngine:
         elif iMaxImageSize >= threshold:
             self.logger.info(f"图片最大size为{iMaxImageSize / 1e6}mb 大于等于{threshold / 1e6}mb")
         if iMaxImageSize >= threshold or oWeibo.live_photo or oWeibo.video_url() or canDuplicable:
-            self.afterDumpPost(savePath)
+            bypy_tool.not_blocking_upload(savePath)
             return True
         else:
-            if sys.platform == "linux":
+            if sys.platform == "linux":  # 清理文件 防止堆积
                 os.system(f"rm -rf {savePath}")
             return False
-    
-    def afterDumpPost(self, savePath):
-        p = Process(target=uploadFiles, args=(savePath,))  # 非阻塞，开个进程用于上传到云盘
-        p.start()
     
     async def detection(self, oWeibo: Weibo) -> bool:
         """
@@ -179,7 +177,7 @@ class SpiderEngine:
         if not oWeibo.thumbnail_image_list():  # 用缩略图来做识别（API限制4M)
             return False
         for image in oWeibo.thumbnail_image_list():
-            human_num = await self.oAIAPI.detection(image, oWeibo)
+            human_num = await self.ai_tool.detection(image, oWeibo)
             if human_num >= 1:
                 self.logger.info(f"微博 {oWeibo.detail_url()} 检测到人体 {human_num}")
                 return True
@@ -211,7 +209,7 @@ class SpiderEngine:
             else:
                 self.updateScanHistory(oWeibo.original_weibo.weibo_id())
         return False
-
+    
     async def is_repost(self, oWeibo: Weibo) -> bool:
         if oWeibo.original_weibo is None:
             if len(oWeibo.image_list()) < 3:
@@ -226,7 +224,7 @@ class SpiderEngine:
             if await self.detection(oWeibo):
                 return True
         else:
-            lSp = readSpecialUsers()
+            lSp = read_special_users()
             if oWeibo.user_uid() in lSp:
                 return True
             return False

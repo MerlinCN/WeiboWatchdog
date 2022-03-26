@@ -1,4 +1,4 @@
-Cookies = b""
+Cookies = ""
 BarkKey = ""
 SpUser = []
 API_key = ""
