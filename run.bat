@@ -1,1 +1,1 @@
-python Src/Main.py
+python WeiboWatchDog/Main.py
