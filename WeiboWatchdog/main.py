@@ -46,13 +46,13 @@ async def onNewWeibo(weibo: Weibo):
         comment = select_comment(oWeibo)
         is_dual = len(oWeibo.image_list()) > 6
 
-        await myBot.like_weibo(oWeibo.weibo_id())
         myBot.repost_action(oWeibo.weibo_id(), content=comment, dualPost=is_dual)
         wd.updateHistory(oWeibo.weibo_id())
+        await myBot.like_weibo(oWeibo.weibo_id())
         wd.logger.info(f"结束处理微博 {weibo.detail_url()}")
     except Exception as e:
         wd.logger.error(f"处理微博 {weibo.detail_url()} 出错: {e}")
-        bark_call(f"处理微博出错", weibo.detail_url())
+        bark_call(f"处理微博出错", weibo.scheme)
 
 
 if __name__ == '__main__':

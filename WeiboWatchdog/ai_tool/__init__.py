@@ -30,7 +30,7 @@ class BaiduAPI:  # 百度人体识别API
             data = result.json()
         except Exception as e:
             self.logger.error(result.status_code, result.text)
-            bark_call(f"人体识别出错 {result.text}", oWeibo.detail_url())
+            bark_call(f"人体识别出错 {result.text}", oWeibo.scheme)
             self.logger.error(e)
             return person_num
         person_num_o = data["person_num"]
