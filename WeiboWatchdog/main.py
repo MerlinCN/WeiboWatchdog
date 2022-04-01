@@ -22,7 +22,7 @@ def select_comment(weibo: Weibo):
 @myBot.onMentionCmt
 async def on_mention_cmt(cmt: Comment):
     try:
-        if wd.isInHistory(cmt.root_weibo.weibo_id()) is True:
+        if myBot.is_weibo_repost(cmt.root_weibo.weibo_id()) is True:
             wd.logger.info(f"已经转发过微博 {cmt.root_weibo.detail_url()}")
             return
         oWeibo = cmt.root_weibo
@@ -30,7 +30,6 @@ async def on_mention_cmt(cmt: Comment):
         await wd.dump_post(oWeibo)
         comment = select_comment(oWeibo)
         myBot.repost_action(oWeibo.weibo_id(), content=comment)
-        wd.updateHistory(oWeibo.weibo_id())
         wd.logger.info(f"结束处理微博 {oWeibo.detail_url()}")
     except Exception as e:
         wd.logger.error(f"处理@我的评论出错: {e}")
@@ -47,7 +46,7 @@ async def onNewWeibo(weibo: Weibo):
             oWeibo = weibo.original_weibo
         else:
             oWeibo = weibo
-        if wd.isInHistory(oWeibo.weibo_id()) is True:
+        if myBot.is_weibo_repost(oWeibo.weibo_id()) is True:
             wd.logger.info(f"已经转发过微博 {oWeibo.detail_url()}")
             return
         wd.logger.info(f"开始处理微博 {oWeibo.detail_url()}")
@@ -61,7 +60,6 @@ async def onNewWeibo(weibo: Weibo):
         is_dual = len(oWeibo.image_list()) > 6
         
         myBot.repost_action(oWeibo.weibo_id(), content=comment, dualPost=is_dual)
-        wd.updateHistory(oWeibo.weibo_id())
         # await myBot.like_weibo(oWeibo.weibo_id())
         wd.logger.info(f"结束处理微博 {weibo.detail_url()}")
     except Exception as e:

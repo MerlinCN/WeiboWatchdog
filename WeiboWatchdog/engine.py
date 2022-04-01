@@ -1,6 +1,4 @@
 import os
-import random
-import sqlite3
 import sys
 
 import requests
@@ -17,53 +15,6 @@ class SpiderEngine:
     def __init__(self, loggerName: str):
         self.logger = get_logger(loggerName, module_name=__name__)
         self.ai_tool = BaiduAPI()
-        self.conn = sqlite3.connect("history.db")
-        self.initConn()
-    
-    # region 数据库操作
-    def initConn(self):
-        """
-        初始化表
-        """
-        cursor = self.conn.cursor()
-        cursor.execute('''
-        CREATE TABLE IF NOT EXISTS history(
-   mid VARCHAR(20),
-   PRIMARY KEY(mid)
-);''')
-
-        cursor.close()
-        self.conn.commit()
-    
-    def updateHistory(self, mid: int):
-        """
-        更新转发历史
-        """
-        cursor = self.conn.cursor()
-        cursor.execute(f'''
-        insert into history (mid) values ({mid});
-        ''')
-        cursor.close()
-        self.conn.commit()
-        self.logger.info(f"转发历史存库成功")
-    
-    def isInHistory(self, mid: int) -> bool:
-        """
-        是否已经转发
-
-        :param mid: 微博编号
-        :return: 结果
-        """
-        cursor = self.conn.cursor()
-        cursor.execute(f'''
-        select * from history where mid = {mid};
-        ''')
-
-        values = cursor.fetchall()
-        cursor.close()
-        return len(values) > 0
-    
-    # endregion
     
     async def dump_post(self, oWeibo: Weibo, canDuplicable=False) -> bool:
         """
@@ -157,16 +108,6 @@ class SpiderEngine:
         
         self.logger.info(f"微博 {oWeibo.detail_url()} 未检测到人体 ")
         return False
-    
-    @staticmethod
-    def randomComment(oWeibo: Weibo) -> str:
-        if len(oWeibo.image_list()) < 6:
-            return "转发微博"
-        
-        lComments = ["[打call]", "[羞嗒嗒]", "[awsl]", "[赢牛奶]", "[心]", "[好喜欢]",
-                     "[求关注]", "[哆啦A梦花心]", "[送花花]", "[彩虹屁]", "[哇]"]
-        sComment = random.choice(lComments) * random.randint(1, 3)
-        return sComment
     
     async def is_repost(self, oWeibo: Weibo) -> bool:
         if oWeibo.original_weibo is None:
