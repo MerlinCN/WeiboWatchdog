@@ -31,10 +31,7 @@ class SpiderEngine:
    mid VARCHAR(20),
    PRIMARY KEY(mid)
 );''')
-        cursor.execute('''
-        CREATE TABLE IF NOT EXISTS ScanHistory(
-       mid VARCHAR(20) PRIMARY KEY
-    );''')
+
         cursor.close()
         self.conn.commit()
     
@@ -50,15 +47,6 @@ class SpiderEngine:
         self.conn.commit()
         self.logger.info(f"转发历史存库成功")
     
-    def updateScanHistory(self, mid: int):
-        """
-        更新扫描历史
-        """
-        cursor = self.conn.cursor()
-        cursor.execute(f"insert into ScanHistory (mid) values ({mid});")
-        cursor.close()
-        self.conn.commit()
-    
     def isInHistory(self, mid: int) -> bool:
         """
         是否已经转发
@@ -71,21 +59,6 @@ class SpiderEngine:
         select * from history where mid = {mid};
         ''')
 
-        values = cursor.fetchall()
-        cursor.close()
-        return len(values) > 0
-    
-    def isInScanHistory(self, mid: int) -> bool:
-        """
-        是否已经扫描
-
-        :param mid: 微博编号
-        :return: 结果
-        """
-        cursor = self.conn.cursor()
-        cursor.execute(f'''
-                select * from ScanHistory where mid = {mid};
-                ''')
         values = cursor.fetchall()
         cursor.close()
         return len(values) > 0
@@ -194,22 +167,6 @@ class SpiderEngine:
                      "[求关注]", "[哆啦A梦花心]", "[送花花]", "[彩虹屁]", "[哇]"]
         sComment = random.choice(lComments) * random.randint(1, 3)
         return sComment
-    
-    def is_had_scan(self, oWeibo: Weibo) -> bool:
-    
-        if oWeibo.original_weibo is None:
-            isInScanHistory = self.isInScanHistory(oWeibo.weibo_id())
-            if isInScanHistory:  # 单次扫描
-                return True
-            else:
-                self.updateScanHistory(oWeibo.weibo_id())
-        else:
-            isInScanHistory = self.isInScanHistory(oWeibo.original_weibo.weibo_id())
-            if isInScanHistory:  # 单次扫描
-                return True
-            else:
-                self.updateScanHistory(oWeibo.original_weibo.weibo_id())
-        return False
     
     async def is_repost(self, oWeibo: Weibo) -> bool:
         if oWeibo.original_weibo is None:

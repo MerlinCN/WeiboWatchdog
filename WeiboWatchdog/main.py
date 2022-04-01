@@ -1,6 +1,7 @@
 import random
 
 from WeiboBot import Bot
+from WeiboBot.comment import Comment
 from WeiboBot.weibo import Weibo
 from const import *
 from engine import SpiderEngine
@@ -18,14 +19,27 @@ def select_comment(weibo: Weibo):
     return sComment
 
 
+@myBot.onMentionCmt
+async def on_mention_cmt(cmt: Comment):
+    try:
+        if wd.isInHistory(cmt.root_weibo.weibo_id()) is True:
+            wd.logger.info(f"已经转发过微博 {cmt.root_weibo.detail_url()}")
+            return
+        oWeibo = cmt.root_weibo
+        wd.logger.info(f"开始处理微博 {oWeibo.detail_url()}")
+        await wd.dump_post(oWeibo)
+        comment = select_comment(oWeibo)
+        myBot.repost_action(oWeibo.weibo_id(), content=comment)
+        wd.updateHistory(oWeibo.weibo_id())
+        wd.logger.info(f"结束处理微博 {oWeibo.detail_url()}")
+    except Exception as e:
+        wd.logger.error(f"处理@我的评论出错: {e}")
+        bark_call(f"处理@我的评论出错")
+
+
 @myBot.onNewWeibo
 async def onNewWeibo(weibo: Weibo):
     try:
-        wd.logger.info(f"检测是否已经扫描过微博 {weibo.detail_url()}")
-        if wd.is_had_scan(weibo) is True:
-            wd.logger.info(f"已经扫描过微博 {weibo.detail_url()}")
-            return False
-        wd.logger.info(f"未扫描过微博 {weibo.detail_url()}")
         is_repost = await wd.is_repost(weibo)
         if is_repost is False:
             return
@@ -42,13 +56,13 @@ async def onNewWeibo(weibo: Weibo):
             wd.logger.info(f"图片/视频太小,不转载")
             wd.logger.info(f"结束处理微博 {oWeibo.detail_url()}")
             return
-
+        
         comment = select_comment(oWeibo)
         is_dual = len(oWeibo.image_list()) > 6
-
+        
         myBot.repost_action(oWeibo.weibo_id(), content=comment, dualPost=is_dual)
         wd.updateHistory(oWeibo.weibo_id())
-        await myBot.like_weibo(oWeibo.weibo_id())
+        # await myBot.like_weibo(oWeibo.weibo_id())
         wd.logger.info(f"结束处理微博 {weibo.detail_url()}")
     except Exception as e:
         wd.logger.error(f"处理微博 {weibo.detail_url()} 出错: {e}")
