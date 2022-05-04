@@ -2,22 +2,33 @@ import base64
 
 import requests
 
+import config
 from WeiboBot import Weibo
 from log import get_logger
-from util import read_ai_key, bark_call
+from util import bark_call
 
 
 class BaiduAPI:  # 百度人体识别API
     def __init__(self):
-        self.session = requests.session()
+        api_key = config.ai_key
+        secrets_key = config.ai_secret
+
         self.logger = get_logger("MainLoop", module_name=__name__)
-        api_key, secrets_key = read_ai_key()
+        self.is_enable = True
+        if not api_key or not secrets_key:
+            self.logger.warning("未启动人体识别")
+            self.is_enable = False
+        self.session = requests.session()
         root_key = f"https://aip.baidubce.com/oauth/2.0/token?grant_type=client_credentials&client_id={api_key}&client_secret={secrets_key}"
         root_res = self.session.get(root_key)
-        self.access_token = root_res.json()["access_token"]
+        try:
+            self.access_token = root_res.json()["access_token"]
+        except Exception as e:
+            self.is_enable = False
+            self.logger.error("请检查百度人体识别API配置")
         self.header = {'content-type': 'application/x-www-form-urlencoded'}
         self.detection_url = "https://aip.baidubce.com/rest/2.0/image-classify/v1/body_attr"
-    
+
     async def detection(self, image_url: str, oWeibo: Weibo) -> int:
         res_image = self.session.get(image_url)
         person_num = 0

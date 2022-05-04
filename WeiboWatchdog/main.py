@@ -1,20 +1,21 @@
 import random
 
+import config
 from WeiboBot import Bot
 from WeiboBot.comment import Comment
 from WeiboBot.weibo import Weibo
 from const import *
 from engine import SpiderEngine
-from util import read_cookies, bark_call
+from util import bark_call
 
-myBot = Bot(cookies=read_cookies())
+myBot = Bot(cookies=config.cookies)
 wd = SpiderEngine(loggerName="MainLoop")
 
 
 def select_comment(weibo: Weibo):
     if len(weibo.image_list()) < 6:
         return "转发微博"
-    
+
     sComment = random.choice(COMMENTS) * random.randint(1, 3)
     return sComment
 
@@ -39,27 +40,27 @@ async def on_mention_cmt(cmt: Comment):
 @myBot.onNewWeibo
 async def onNewWeibo(weibo: Weibo):
     try:
-        is_repost = await wd.is_repost(weibo)
-        if is_repost is False:
+        is_process = await wd.is_process(weibo)
+        if is_process is False:
             return
         if weibo.original_weibo is not None:
             oWeibo = weibo.original_weibo
         else:
             oWeibo = weibo
         if myBot.is_weibo_repost(oWeibo.weibo_id()) is True:
-            wd.logger.info(f"已经转发过微博 {oWeibo.detail_url()}")
+            wd.logger.info(f"已经处理过微博 {oWeibo.detail_url()}")
             return
         wd.logger.info(f"开始处理微博 {oWeibo.detail_url()}")
         is_large_image = await wd.dump_post(oWeibo)
         if not is_large_image:
-            wd.logger.info(f"图片/视频太小,不转载")
+            wd.logger.info(f"图片/视频太小")
             wd.logger.info(f"结束处理微博 {oWeibo.detail_url()}")
             return
-        
+
         comment = select_comment(oWeibo)
         is_dual = len(oWeibo.image_list()) > 6
-        
-        myBot.repost_action(oWeibo.weibo_id(), content=comment, dualPost=is_dual)
+        if config.is_repost is True:
+            myBot.repost_action(oWeibo.weibo_id(), content=comment, dualPost=is_dual)
         # await myBot.like_weibo(oWeibo.weibo_id())
         wd.logger.info(f"结束处理微博 {weibo.detail_url()}")
     except Exception as e:
