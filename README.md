@@ -16,16 +16,18 @@ _基于[WeiboBot](https://github.com/MerlinCN/WeiboBot) 开发的机器人_
 
 ## 配置项
 
-> 配置放在Config.py里
+> 配置生成在`config.json`文件中
 
-`Cookies`：（str）在浏览器登录后复制过来就好
+`cookies`:(必填)用浏览器登录m.weibo.cn,按F12获取cookies
 
-`BarkKey`：（str）一个告警App [项目链接](https://github.com/Finb/Bark)
+`bark_key`:一个告警App [项目链接](https://github.com/Finb/Bark)
 
-`SpUser`：（list）特殊用户的uid的列表（只转发别人微博的博主）
+`special_users`:特殊用户的uid的列表（只转发别人微博的博主）
 
-`API_key`：（str）百度云APIKey
+`ai_key`:百度云人体识别APIKey
 
-`SecretKey`：（str）百度云SecretKey
+`ai_secret`:百度云人体识别SecretKey
 
+`is_repost`:是否转发微博
 
+`is_upload`:是否上传图片
