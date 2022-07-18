@@ -2,10 +2,10 @@ import os
 import sys
 
 import requests
+from WeiboBot.weibo import Weibo
 
 import bypy_tool
 import config
-from WeiboBot.weibo import Weibo
 from ai_tool import BaiduAPI
 from log import get_logger
 
@@ -16,6 +16,7 @@ class SpiderEngine:
         self.logger = get_logger(loggerName, module_name=__name__)
         self.ai_tool = BaiduAPI()
         self.check_config()
+        self.timeout = 60
 
     def check_config(self):
         if not config.cookies:
@@ -64,7 +65,7 @@ class SpiderEngine:
 
         try:
             if oWeibo.video_url():
-                video_res = requests.get(oWeibo.video_url())
+                video_res = requests.get(oWeibo.video_url(), timeout=self.timeout)
                 with open(f"{savePath}/{oWeibo.id}.mp4", 'wb') as f:
                     f.write(video_res.content)
                 self.logger.info(f"保存微博视频成功")
@@ -73,8 +74,8 @@ class SpiderEngine:
 
         try:
             for idx, livePhoto in enumerate(oWeibo.live_photo):
-                livePhoto_res = requests.get(livePhoto)
-                with open(f"{savePath}/livephoto_{idx + 1}.mov", 'wb') as f:
+                livePhoto_res = requests.get(livePhoto, timeout=self.timeout)
+                with open(f"{savePath}/{oWeibo.id}_{idx + 1}.mov", 'wb') as f:
                     f.write(livePhoto_res.content)
                 self.logger.info(f"保存微博LivePhotos{idx + 1}成功")
         except Exception as e:
@@ -83,7 +84,7 @@ class SpiderEngine:
         for idx, image in enumerate(oWeibo.image_list()):
             try:
                 imageName = image.split('/').pop()
-                res = requests.get(image)
+                res = requests.get(image, timeout=self.timeout)
                 with open(f"{savePath}/{imageName}", 'wb') as f:
                     iImageSize = len(res.content)
                     if iImageSize > iMaxImageSize:

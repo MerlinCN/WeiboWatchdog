@@ -7,3 +7,4 @@ Video/*
 Log/*
 *.out
 .vscode
+*.json

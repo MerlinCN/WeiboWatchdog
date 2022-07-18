@@ -1,9 +1,9 @@
 import base64
 
 import requests
+from WeiboBot import Weibo
 
 import config
-from WeiboBot import Weibo
 from log import get_logger
 from util import bark_call
 
@@ -12,7 +12,6 @@ class BaiduAPI:  # 百度人体识别API
     def __init__(self):
         api_key = config.ai_key
         secrets_key = config.ai_secret
-
         self.logger = get_logger("MainLoop", module_name=__name__)
         self.is_enable = True
         if not api_key or not secrets_key:
