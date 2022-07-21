@@ -31,3 +31,5 @@ _基于[WeiboBot](https://github.com/MerlinCN/WeiboBot) 开发的机器人_
 `is_repost`:是否转发微博
 
 `is_upload`:是否上传图片
+
+`is_screenshot`:是否自动截图（需要自行配置chromedriver）

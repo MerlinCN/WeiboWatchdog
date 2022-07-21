@@ -53,15 +53,20 @@ class SpiderEngine:
         threshold = 1e6 * 0.4
         if not os.path.exists(savePath):
             os.makedirs(savePath)
-        contextName = f"{savePath}/{oWeibo.id}.txt"
-        with open(contextName, 'w', encoding="utf8") as f:
-            f.write(f"{userName}\n")
-            f.write(f"{oWeibo.created_at}\n")
-            f.write(oWeibo.text + '\n')
-            for livePhoto in oWeibo.live_photo:
-                f.write(livePhoto + '\n')
-            if oWeibo.video_url():
-                f.write(oWeibo.video_url())
+        if oWeibo.screenshot:
+            with open(f"{savePath}/{oWeibo.id}.png", "wb") as f:
+                f.write(oWeibo.screenshot)
+            self.logger.info(f"保存微博截图成功")
+        else:
+            contextName = f"{savePath}/{oWeibo.id}.txt"
+            with open(contextName, 'w', encoding="utf8") as f:
+                f.write(f"{userName}\n")
+                f.write(f"{oWeibo.created_at}\n")
+                f.write(oWeibo.text + '\n')
+                for livePhoto in oWeibo.live_photo:
+                    f.write(livePhoto + '\n')
+                if oWeibo.video_url():
+                    f.write(oWeibo.video_url())
 
         try:
             if oWeibo.video_url():

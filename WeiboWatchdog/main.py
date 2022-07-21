@@ -1,14 +1,15 @@
 import random
 
-import config
 from WeiboBot import Bot
 from WeiboBot.comment import Comment
 from WeiboBot.weibo import Weibo
+
+import config
 from const import *
 from engine import SpiderEngine
 from util import bark_call
 
-myBot = Bot(cookies=config.cookies)
+myBot = Bot(cookies=config.cookies, use_selenium=config.is_screenshot)
 wd = SpiderEngine(loggerName="MainLoop")
 
 
@@ -23,11 +24,12 @@ def select_comment(weibo: Weibo):
 @myBot.onMentionCmt
 async def on_mention_cmt(cmt: Comment):
     try:
-        if myBot.is_weibo_repost(cmt.root_weibo.weibo_id()) is True:
-            wd.logger.info(f"已经转发过微博 {cmt.root_weibo.detail_url()}")
+        root_weibo = cmt.root_weibo.original_weibo if cmt.root_weibo.original_weibo else cmt.root_weibo
+        if myBot.is_weibo_repost(root_weibo.weibo_id()) is True:
+            wd.logger.info(f"已经转发过微博 {root_weibo.detail_url()}")
             return
-        oWeibo = cmt.root_weibo
-        wd.logger.info(f"开始处理微博 {oWeibo.detail_url()}")
+        oWeibo = root_weibo
+        wd.logger.info(f"开始处理@{cmt.user['screen_name']} 请求转发微博 {oWeibo.detail_url()}")
         await wd.dump_post(oWeibo)
         comment = select_comment(oWeibo)
         myBot.repost_action(oWeibo.weibo_id(), content=comment)
