@@ -34,6 +34,13 @@ class SpiderEngine:
             self.logger.info("开启上传功能")
         else:
             self.logger.info("未开启上传功能")
+        if config.is_screenshot:
+            if os.getenv('chromedriver', 'null') == "null":
+                raise EnvironmentError("未配置chromedriver")
+
+            self.logger.info("开启自动截图功能")
+        else:
+            self.logger.info("未开启自动截图功能")
 
     async def dump_post(self, oWeibo: Weibo) -> bool:
         """
