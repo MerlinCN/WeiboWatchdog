@@ -11,7 +11,7 @@ class MyByPy(ByPy):
     def __init__(self, *args, **kwargs):
         super(MyByPy, self).__init__(*args, **kwargs)
         self.logger = get_logger("ByPy", module_name=__name__)
-    
+
     def pv(self, msg: str, **kwargs):
         self.logger.info(msg)
         return super().pv(msg, **kwargs)
@@ -19,6 +19,9 @@ class MyByPy(ByPy):
 
 def upload_files(filePath: str):
     bp = MyByPy()
+    if not os.path.exists(filePath):  # 多次转发的时候可能被另一个进程删除
+        bp.logger.warning("文件夹不存在")
+        return
     bp.upload(filePath, filePath)
     if sys.platform == "linux":
         os.system(f"rm -rf {filePath}")
