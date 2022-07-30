@@ -3,6 +3,10 @@ import sys
 
 import requests
 from WeiboBot.weibo import Weibo
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.wait import WebDriverWait
 
 import bypy_tool
 import config
@@ -17,6 +21,19 @@ class SpiderEngine:
         self.ai_tool = BaiduAPI()
         self.check_config()
         self.timeout = 60
+        options = Options()
+        options.add_argument("enable-automation")
+        options.add_argument("--headless")
+        options.add_argument("--window-size=1920,1080")
+        options.add_argument("--no-sandbox")
+        options.add_argument("--disable-extensions")
+        options.add_argument("--dns-prefetch-disable")
+        options.add_argument("--disable-gpu")
+        options.add_argument("--disable-dev-shm-usage")
+        # options.add_argument('disable-infobars')
+        self.options = options
+        self.wd = None
+        # self.wd.set_page_load_timeout(5)
 
     def check_config(self):
         if not config.cookies:
@@ -34,13 +51,6 @@ class SpiderEngine:
             self.logger.info("开启上传功能")
         else:
             self.logger.info("未开启上传功能")
-        if config.is_screenshot:
-            if os.getenv('chromedriver', 'null') == "null":
-                raise EnvironmentError("未配置chromedriver")
-
-            self.logger.info("开启自动截图功能")
-        else:
-            self.logger.info("未开启自动截图功能")
 
     async def dump_post(self, oWeibo: Weibo) -> bool:
         """
@@ -60,10 +70,26 @@ class SpiderEngine:
         threshold = 1e6 * 0.4
         if not os.path.exists(savePath):
             os.makedirs(savePath)
-        if oWeibo.screenshot:
+
+        self.wd = webdriver.Chrome(options=self.options)
+
+        screenshot = b''
+        try:
+            self.wd.get(oWeibo.detail_url())
+            wait = WebDriverWait(self.wd, 30)
+            wait.until(lambda _: self.wd.find_elements(By.CSS_SELECTOR, '.f-weibo'))
+            weibo_frame = self.wd.find_element(By.CSS_SELECTOR, '.f-weibo')
+            screenshot = weibo_frame.screenshot_as_png
+        except Exception as e:
+            self.logger.error(f"{oWeibo.detail_url()} webdriver错误 \n{e}")
+
+        self.wd.quit()
+
+        if screenshot:
             with open(f"{savePath}/{oWeibo.id}.png", "wb") as f:
-                f.write(oWeibo.screenshot)
+                f.write(screenshot)
             self.logger.info(f"保存微博截图成功")
+
         else:
             contextName = f"{savePath}/{oWeibo.id}.txt"
             with open(contextName, 'w', encoding="utf8") as f:
