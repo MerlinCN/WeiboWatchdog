@@ -12,7 +12,7 @@ from const import *
 from engine import SpiderEngine
 from util import bark_call
 
-myBot = Bot(cookies=config.cookies, is_debug=True)
+myBot = Bot(cookies=config.cookies, is_debug=config.is_debug)
 wd = SpiderEngine(loggerName="MainLoop")
 
 
