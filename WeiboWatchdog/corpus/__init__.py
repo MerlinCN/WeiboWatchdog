@@ -9,7 +9,6 @@ cmd_func = {
 def command(cmd):
     def decorate(func):
         cmd_func[cmd] = func
-        print(func.__name__, func.__doc__)
 
     return decorate
 

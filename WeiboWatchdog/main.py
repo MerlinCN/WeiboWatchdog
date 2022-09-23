@@ -1,4 +1,6 @@
+import importlib
 import random
+import sys
 
 import config
 import corpus
@@ -34,6 +36,13 @@ async def on_chat(chat: Chat):
             wd.logger.info(f"收到 命令:{cmd}，参数：{args}")
             if cmd in corpus.cmd_func:
                 await corpus.cmd_func[cmd](myBot, msg, *args)
+            elif cmd == "/reload":
+                try:
+                    importlib.reload(sys.modules.get(args[0]))
+                except Exception as e:
+                    await myBot.send_message(config.owner, str(e))
+                    return
+                await myBot.send_message(config.owner, f"热更 {args[0]} 成功")
 
 
 @myBot.onMentionCmt

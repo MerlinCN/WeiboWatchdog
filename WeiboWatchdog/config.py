@@ -10,6 +10,7 @@ is_repost = False  # 是否转发
 is_upload = False  # 是否上传图片
 is_screenshot = False  # 是否自动截图（需要自行配置chromedriver）
 owner = 0  # 管理员ID
+is_debug = False
 
 default_config = {
     "cookies": cookies,
@@ -20,7 +21,8 @@ default_config = {
     "is_repost": is_repost,
     "is_upload": is_upload,
     "is_screenshot": is_screenshot,
-    "owner": owner
+    "owner": owner,
+    "is_debug": is_debug
 }
 
 if not os.path.exists("config.json"):
