@@ -1,15 +1,16 @@
 import random
 
+import config
+import corpus
 from WeiboBot import Bot
 from WeiboBot.comment import Comment
+from WeiboBot.message import Chat
 from WeiboBot.weibo import Weibo
-
-import config
 from const import *
 from engine import SpiderEngine
 from util import bark_call
 
-myBot = Bot(cookies=config.cookies)
+myBot = Bot(cookies=config.cookies, is_debug=True)
 wd = SpiderEngine(loggerName="MainLoop")
 
 
@@ -19,6 +20,20 @@ def select_comment(weibo: Weibo):
 
     comment = random.choice(COMMENTS) * random.randint(1, 3)
     return comment
+
+
+@myBot.onNewMsg
+async def on_chat(chat: Chat):
+    for msg in chat.msg_list:  # 消息列表
+        if msg.sender_id == config.owner and msg.text.startswith("/"):
+            args = []
+            cmd_list = msg.text.split()
+            cmd = cmd_list[0]
+            if len(cmd_list) > 1:
+                args = cmd_list[1:]
+            wd.logger.info(f"收到 命令:{cmd}，参数：{args}")
+            if cmd in corpus.cmd_func:
+                await corpus.cmd_func[cmd](myBot, msg, *args)
 
 
 @myBot.onMentionCmt
