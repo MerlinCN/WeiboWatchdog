@@ -12,7 +12,7 @@ from const import *
 from engine import SpiderEngine
 from util import bark_call
 
-myBot = Bot(cookies=config.cookies, is_debug=config.is_debug)
+myBot = Bot(cookies=config.cookies, is_debug=True)
 wd = SpiderEngine(loggerName="MainLoop")
 
 
@@ -35,7 +35,7 @@ async def on_chat(chat: Chat):
                 args = cmd_list[1:]
             wd.logger.info(f"收到 命令:{cmd}，参数：{args}")
             if cmd in corpus.cmd_func:
-                await corpus.cmd_func[cmd](myBot, msg, *args)
+                await corpus.cmd_func[cmd](myBot, wd, msg, *args)
             elif cmd == "/reload":
                 try:
                     importlib.reload(sys.modules.get(args[0]))

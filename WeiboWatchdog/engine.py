@@ -2,7 +2,6 @@ import os
 import sys
 
 import requests
-from WeiboBot.weibo import Weibo
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
@@ -10,6 +9,7 @@ from selenium.webdriver.support.wait import WebDriverWait
 
 import bypy_tool
 import config
+from WeiboBot.weibo import Weibo
 from ai_tool import BaiduAPI
 from log import get_logger
 
@@ -49,10 +49,11 @@ class SpiderEngine:
             self.logger.info("未开启转发功能")
         if config.is_upload:
             self.logger.info("开启上传功能")
+            os.system("bypy info")
         else:
             self.logger.info("未开启上传功能")
 
-    async def dump_post(self, oWeibo: Weibo) -> bool:
+    async def dump_post(self, oWeibo: Weibo, is_force=False) -> bool:
         """
         保存微博，并且判断微博图片大小
 
@@ -137,6 +138,9 @@ class SpiderEngine:
             self.logger.info(f"图片最大size为{iMaxImageSize / 1e6}mb 小于{threshold / 1e6}mb")
         elif iMaxImageSize >= threshold:
             self.logger.info(f"图片最大size为{iMaxImageSize / 1e6}mb 大于等于{threshold / 1e6}mb")
+        if is_force is True:
+            bypy_tool.not_blocking_upload(savePath)
+            return True
         if (iMaxImageSize >= threshold or oWeibo.live_photo or oWeibo.video_url()) and config.is_upload:
             bypy_tool.not_blocking_upload(savePath)
             return True
