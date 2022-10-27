@@ -4,9 +4,11 @@ import os
 import sys
 from logging import Logger
 
+import config
+
 
 class Log(Logger):
-    def __init__(self, name: str, level=logging.DEBUG, is_print=True, is_file=True, module_name=""):
+    def __init__(self, name: str, level=logging.DEBUG, is_print=True, is_file=not config.is_debug, module_name=""):
         super(Log, self).__init__(name, level)
         if is_print:
             s_handler = logging.StreamHandler(sys.stdout)

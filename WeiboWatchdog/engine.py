@@ -190,6 +190,9 @@ class SpiderEngine:
         else:
             if oWeibo.user_uid() in config.special_users:
                 return True
+            if oWeibo.original_weibo.is_read is False and oWeibo.original_weibo.user_c.following:
+                self.logger.info("检测转发微博原博")
+                return await self.is_process(oWeibo.original_weibo)
             self.logger.info(f"非原创微博,不继续处理")
             return False
         return False

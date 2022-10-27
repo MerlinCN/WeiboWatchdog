@@ -74,6 +74,8 @@ async def on_new_weibo(weibo: Weibo):
             target_weibo = weibo.original_weibo
         else:
             target_weibo = weibo
+        if not myBot.is_weibo_read(target_weibo.weibo_id()):
+            myBot.mark_weibo(target_weibo.weibo_id())
         if myBot.is_weibo_repost(target_weibo.weibo_id()) is True:
             wd.logger.info(f"已经处理过微博 {target_weibo.detail_url()}")
             return

@@ -7,6 +7,9 @@ COPY . .
 
 RUN  pip3 install -r requirements.txt
 
+RUN git clone https://github.com/MerlinCN/WeiboBot
+
+RUN python3 WeiboBot/setup.py install
 
 RUN  sed -i s@/archive.ubuntu.com/@/mirrors.aliyun.com/@g /etc/apt/sources.list
 RUN  apt-get clean
