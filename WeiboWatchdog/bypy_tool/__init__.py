@@ -4,7 +4,7 @@ from multiprocessing import Process
 
 from bypy import ByPy
 
-from log import get_logger
+from WeiboWatchdog.log import get_logger
 
 
 class MyByPy(ByPy):
@@ -22,7 +22,9 @@ def upload_files(filePath: str):
     if not os.path.exists(filePath):  # 多次转发的时候可能被另一个进程删除
         bp.logger.warning("文件夹不存在")
         return
-    bp.upload(filePath, filePath)
+    result = bp.upload(filePath, filePath)
+    if result != 0:
+        bp.logger.warning(f"{filePath} 上传失败")
     if sys.platform == "linux":
         os.system(f"rm -rf {filePath}")
 

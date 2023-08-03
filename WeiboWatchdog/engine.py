@@ -84,6 +84,7 @@ class SpiderEngine:
         except Exception as e:
             self.logger.error(f"{oWeibo.detail_url()} webdriver错误 \n{e}")
 
+        self.wd.close()
         self.wd.quit()
 
         if screenshot:
@@ -171,6 +172,11 @@ class SpiderEngine:
         return False
 
     async def is_process(self, oWeibo: Weibo) -> bool:
+        """
+        判断是否应该转发
+        :param oWeibo:
+        :return:
+        """
         if oWeibo.original_weibo is None:
             if oWeibo.video_url():
                 self.logger.info(f"微博带视频,不继续处理")
@@ -178,6 +184,9 @@ class SpiderEngine:
                 return False
             if len(oWeibo.image_list()) < 3:
                 self.logger.info(f"微博 图片数量小于3张,不继续处理")
+                return False
+            if oWeibo.full_text().find("#") < 0:  # 不带话题的不转发
+                self.logger.info(f"不带话题不转发")
                 return False
             if oWeibo.full_text().find("房间号") > 0:  # 带直播链接的不转发
                 self.logger.info(f"微博带直播链接,不继续处理")
