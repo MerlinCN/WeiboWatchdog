@@ -52,6 +52,8 @@ class SpiderEngine:
             os.system("bypy info")
         else:
             self.logger.info("未开启上传功能")
+        if config.is_debug:
+            self.logger.info("开启调试模式")
 
     async def dump_post(self, oWeibo: Weibo, is_force=False) -> bool:
         """
@@ -61,8 +63,8 @@ class SpiderEngine:
         :return: 是否应该转发
         """
         userName = oWeibo.user['screen_name']
-        rootPath = f"Data/{userName}/{oWeibo.id}"
-        videoPath = f"Video/{userName}/{oWeibo.id}"
+        rootPath = os.path.join("Data", userName, oWeibo.id)
+        videoPath = os.path.join("Video", userName, oWeibo.id)
         if oWeibo.video_url():
             savePath = videoPath
         else:
@@ -84,8 +86,13 @@ class SpiderEngine:
         except Exception as e:
             self.logger.error(f"{oWeibo.detail_url()} webdriver错误 \n{e}")
 
-        self.wd.close()
-        self.wd.quit()
+        try:
+            self.wd.close()
+            self.wd.quit()
+        except Exception as e:
+            self.logger.error(f"{oWeibo.detail_url()} webdriver错误 \n{e}")
+
+        oWeibo.save_path = os.path.join(os.getcwd(), savePath)
 
         if screenshot:
             with open(f"{savePath}/{oWeibo.id}.png", "wb") as f:
@@ -142,12 +149,15 @@ class SpiderEngine:
         if is_force is True:
             bypy_tool.not_blocking_upload(savePath)
             return True
+
         if (iMaxImageSize >= threshold or oWeibo.live_photo or oWeibo.video_url()) and config.is_upload:
             bypy_tool.not_blocking_upload(savePath)
             return True
+        elif config.is_debug:
+            return True
         else:
-            if sys.platform == "linux":  # 清理文件 防止堆积
-                os.system(f"rm -rf {savePath}")
+            # if sys.platform == "linux":  # 清理文件 防止堆积
+            #     os.system(f"rm -rf {savePath}")
             return False
 
     async def detection(self, oWeibo: Weibo) -> bool:

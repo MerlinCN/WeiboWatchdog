@@ -3,7 +3,7 @@ USER root
 ENV TZ="Asia/Shanghai"
 WORKDIR /app
 
-COPY . .
+ADD . /app
 
 RUN  pip3 install -r requirements.txt
 

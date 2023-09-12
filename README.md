@@ -33,3 +33,9 @@ _基于[WeiboBot](https://github.com/MerlinCN/WeiboBot) 开发的机器人_
 `is_upload`:是否上传图片
 
 `is_screenshot`:是否自动截图（需要自行配置chromedriver）
+
+## Docker(推荐)
+
+`sudo docker build -t weibo .`
+
+`sudo docker run -it -v ~/WeiboWatchdog:/app --name weibo weibo`

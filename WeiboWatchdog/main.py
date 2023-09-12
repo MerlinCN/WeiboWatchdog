@@ -2,6 +2,8 @@ import importlib
 import random
 import sys
 
+import requests
+
 import config
 import corpus
 from WeiboBot import Bot
@@ -91,11 +93,22 @@ async def on_new_weibo(weibo: Weibo):
         if config.is_repost is True:
             myBot.repost_action(target_weibo.weibo_id(), content=comment, dualPost=is_dual)
         # await myBot.like_weibo(target_weibo.weibo_id())
+        try:
+            await forward_qq(target_weibo)
+        except Exception as e:
+            wd.logger.error(f"转发到QQ {weibo.detail_url()} 出错: {e}")
         wd.logger.info(f"结束处理微博 {weibo.detail_url()}")
     except Exception as e:
         wd.logger.error(f"处理微博 {weibo.detail_url()} 出错: {e}")
         bark_call(f"处理微博出错", weibo.scheme)
 
+
+async def forward_qq(weibo: Weibo):
+    json_data = {'save_path': weibo.save_path}
+
+    url = 'http://localhost:8080/forward'
+
+    response = requests.post(url, json=json_data)
 
 if __name__ == '__main__':
     myBot.run()
