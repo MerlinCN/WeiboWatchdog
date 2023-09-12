@@ -104,7 +104,7 @@ async def on_new_weibo(weibo: Weibo):
 
 
 async def forward_qq(weibo: Weibo):
-    json_data = {'save_path': weibo.save_path, "text": weibo.full_text()}
+    json_data = {'save_path': weibo.save_path, "text": weibo.full_text(), "usr_name": weibo.user_c.screen_name}
 
     url = 'http://localhost:8080/forward'
 
