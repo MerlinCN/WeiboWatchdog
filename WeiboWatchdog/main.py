@@ -104,11 +104,12 @@ async def on_new_weibo(weibo: Weibo):
 
 
 async def forward_qq(weibo: Weibo):
-    json_data = {'save_path': weibo.save_path}
+    json_data = {'save_path': weibo.save_path, "text": weibo.full_text()}
 
     url = 'http://localhost:8080/forward'
 
     response = requests.post(url, json=json_data)
+
 
 if __name__ == '__main__':
     myBot.run()
