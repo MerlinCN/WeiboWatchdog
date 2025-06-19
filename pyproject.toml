@@ -1,0 +1,13 @@
+[project]
+name = "weibowatchdog"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+    "bypy>=1.8.9",
+    "fastapi>=0.115.13",
+    "httpx[socks]>=0.28.1",
+    "tencentcloud-sdk-python-ims>=3.0.1394",
+    "tortoise-orm[aiosqlite]>=0.25.1",
+    "uvicorn>=0.34.3",
+    "weibobot[screenshot]>=1.2.0",
+]

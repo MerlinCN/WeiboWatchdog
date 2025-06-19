@@ -1,5 +1,0 @@
-requests
-bypy
-WeiboBot
-selenium
-aiohttp

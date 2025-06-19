@@ -1,1 +1,0 @@
-nohup python3 WeiboWatchdog/main.py >/dev/null &
