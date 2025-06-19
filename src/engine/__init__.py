@@ -86,14 +86,14 @@ class SpiderEngine:
                         if not result:
                             self.repost_queue.insert(0, task)
                             await self._save_queue()  # 保存更新后的队列
-                            self.repost_interval = min(self.repost_interval * 2, 300)
+                            self.repost_interval = min(
+                                self.repost_interval * 2, setting.max_repost_interval
+                            )
                             logger.info(f"转发失败，等待{self.repost_interval}秒后重试")
                             await asyncio.sleep(self.repost_interval)
                             continue
                         self.last_repost_time = current_time
-                        self.repost_interval = max(
-                            self.repost_interval / 2, setting.repost_interval
-                        )
+                        self.repost_interval = setting.repost_interval
                         await self._save_queue()  # 保存更新后的队列
                         logger.info(f"执行转发任务: {task.weibo_mid}")
                     else:

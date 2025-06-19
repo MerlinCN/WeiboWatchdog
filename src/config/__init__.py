@@ -10,6 +10,7 @@ class Setting(BaseSettings):
     tencent_secret_key: str = Field(default="", description="腾讯云secret key")
     special_users: list[int] = Field(default=[], description="微博特殊用户")
     repost_interval: int = Field(default=60, description="转发间隔（秒）")
+    max_repost_interval: int = Field(default=600, description="最大转发间隔（秒）")
     bypy_url: str = Field(default="http://localhost:8000", description="百度云上传地址")
 
     class Config:
