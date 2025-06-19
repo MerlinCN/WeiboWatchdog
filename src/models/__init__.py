@@ -4,6 +4,7 @@ from tortoise import Tortoise
 from loguru import logger
 from pathlib import Path
 
+
 class RepostTask(models.Model):
     """转发任务模型"""
 
@@ -20,14 +21,13 @@ class RepostTask(models.Model):
     def __str__(self):
         return f"RepostTask(id={self.id}, weibo_mid={self.weibo_mid}, status={self.status})"
 
+
 # 创建Pydantic模型用于序列化
 RepostTask_Pydantic = pydantic_model_creator(RepostTask, name="RepostTask")
 
 
 async def init_database(db_path: Path):
     """初始化Tortoise ORM数据库"""
-    await Tortoise.init(
-        db_url=f"sqlite://{db_path}", modules={"models": ["src.models"]}
-    )
+    await Tortoise.init(db_url=f"sqlite://{db_path}", modules={"models": ["models"]})
     await Tortoise.generate_schemas()
     logger.info("数据库初始化成功")

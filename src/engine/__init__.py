@@ -11,12 +11,6 @@ from typing import List
 from dataclasses import dataclass
 from tortoise import Tortoise
 from models import RepostTask, init_database
-from tenacity import (
-    retry,
-    stop_after_attempt,
-    wait_exponential,
-    retry_if_exception_type,
-)
 
 
 @dataclass
@@ -35,8 +29,12 @@ class SpiderEngine:
         self.last_repost_time = 0  # 上次转发时间
         self.repost_queue: List[RepostTaskData] = []
         self.db_path = self.bot.db_path
-
-
+        # 设置UA
+        self.bot.client.headers.update(
+            {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+            }
+        )
 
     async def _load_queue(self):
         """从数据库加载转发队列"""
@@ -75,14 +73,8 @@ class SpiderEngine:
         except Exception as e:
             logger.error(f"保存转发队列失败: {e}")
 
-        
-
     async def _repost_worker(self):
         """转发工作线程，处理队列中的转发任务"""
-        # 初始化数据库
-        await init_database(self.db_path)
-        await self._load_queue()
-
         while True:
             try:
                 if self.repost_queue:
@@ -90,8 +82,18 @@ class SpiderEngine:
                     # 检查是否达到转发间隔
                     if current_time - self.last_repost_time >= self.repost_interval:
                         task = self.repost_queue.pop(0)
-                        await self._execute_repost(task)
+                        result = await self._execute_repost(task)
+                        if not result:
+                            self.repost_queue.insert(0, task)
+                            await self._save_queue()  # 保存更新后的队列
+                            self.repost_interval = min(self.repost_interval * 2, 300)
+                            logger.info(f"转发失败，等待{self.repost_interval}秒后重试")
+                            await asyncio.sleep(self.repost_interval)
+                            continue
                         self.last_repost_time = current_time
+                        self.repost_interval = max(
+                            self.repost_interval / 2, setting.repost_interval
+                        )
                         await self._save_queue()  # 保存更新后的队列
                         logger.info(f"执行转发任务: {task.weibo_mid}")
                     else:
@@ -104,25 +106,21 @@ class SpiderEngine:
                 logger.error(f"转发工作线程出错: {e}")
                 await asyncio.sleep(5)
 
-    @retry(
-        stop=stop_after_attempt(3),
-        wait=wait_exponential(multiplier=1, min=4, max=10),
-        retry=retry_if_exception_type(Exception),
-        before_sleep=lambda retry_state: logger.warning(
-            f"转发微博失败，第 {retry_state.attempt_number} 次重试: {retry_state.outcome.exception()}"
-        ),
-    )
-    async def _execute_repost(self, task: RepostTaskData):
+    async def _execute_repost(self, task: RepostTaskData) -> bool:
         """执行转发任务"""
         try:
             if setting.mode == "prod":
                 await self.bot.repost_weibo(task.weibo_mid, content=task.content)
                 logger.info(f"成功转发微博 {task.weibo_mid}")
+                return True
             else:
-                logger.info(f"成功转发微博 {task.weibo_mid}")
+                logger.info(f"模拟转发微博 {task.weibo_mid}")
+                return True
         except Exception as e:
             logger.error(f"转发微博 {task.weibo_mid} 失败: {e}")
-            raise  # 重新抛出异常，让 tenacity 处理重试
+            if e.args and e.args[0] == "发微博太多啦，休息一会儿吧!":
+                return False
+            return True
 
     async def add_repost_task(self, weibo_mid: str, content: str):
         """添加转发任务到队列"""
@@ -150,6 +148,21 @@ class SpiderEngine:
             logger.error(f"保存{description}失败:{type(e)}:{e}")
             return False
 
+    async def save_livephoto(self, url: str, file_path: Path, description: str) -> bool:
+        """保存LivePhoto视频"""
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.get(url)
+                localtion = response.headers.get("Location")
+                if localtion:
+                    await self._save_file(localtion, file_path, description)
+                    return True
+                else:
+                    logger.error(f"LivePhoto视频URL重定向失败:{url}")
+                    return False
+        except Exception as e:
+            logger.error(f"保存LivePhoto视频失败:{type(e)}:{e}")
+
     async def _save_screenshot(self, weibo: Weibo, save_path: Path) -> None:
         """保存微博截图"""
         try:
@@ -174,7 +187,7 @@ class SpiderEngine:
     async def dump_post(self, weibo: Weibo) -> Path | None:
         # 初始化路径和变量
         save_path = (
-            Path("cache") / f"{weibo.user.mid}_{weibo.user.screen_name}" / weibo.mid
+            Path("cache") / f"{weibo.user.id}_{weibo.user.screen_name}" / weibo.mid
         )
         threshold = 1e6 * 0.3  # 图片大小阈值 300kb
         max_image_size = 0
@@ -194,7 +207,7 @@ class SpiderEngine:
 
         # 保存LivePhotos
         for idx, live_photo in enumerate(weibo.live_photo):
-            await self._save_file(
+            await self.save_livephoto(
                 live_photo,
                 save_path / f"{weibo.mid}_{idx + 1}.mov",
                 f"微博LivePhotos{idx + 1}",
@@ -233,8 +246,11 @@ class SpiderEngine:
             return None
 
     async def clean_cache(self, path: Path):
+        # 如果上一层目录为空，则删除
         if path.exists():
             shutil.rmtree(path)
+            if path.parent.exists() and not list(path.parent.iterdir()):
+                shutil.rmtree(path.parent)
         logger.info(f"清除缓存 {path}")
 
     async def pre_detection(self, weibo: Weibo) -> Weibo | None:
@@ -271,10 +287,17 @@ class SpiderEngine:
 
         return None
 
-    def run(self):
-        loop = asyncio.get_event_loop()
+    async def _init_database(self):
+        await init_database(self.db_path)
+        await self._load_queue()
+
+    async def lifecycle(self):
+        await asyncio.wait_for(self._init_database(), timeout=10)
         try:
-            loop.create_task(self._repost_worker())
-            loop.run_until_complete(self.bot.lifecycle())
-        except KeyboardInterrupt:
-            loop.close()
+            await asyncio.gather(self._repost_worker(), self.bot.lifecycle())
+        except Exception as e:
+            logger.error(f"程序异常: {e}")
+            await self.close()
+
+    def run(self):
+        asyncio.run(self.lifecycle())

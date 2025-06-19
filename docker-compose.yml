@@ -1,0 +1,52 @@
+services:
+  # 基础镜像构建服务（仅用于构建，不运行）
+  base:
+    build:
+      context: .
+      dockerfile: Dockerfile.base
+    image: weibo-watchdog-base:latest
+    profiles:
+      - build-only
+
+  # 主程序服务
+  weibo-main:
+    build:
+      context: .
+      dockerfile: Dockerfile.main
+    container_name: weibo-watchdog-main
+    restart: unless-stopped
+    volumes:
+      - ./data:/app/data
+      - ./cache:/app/cache
+      - ./src:/app/src
+      - ./config:/app/config
+      - .env:/app/.env
+    environment:
+      - TZ=Asia/Shanghai
+      - BYPY_URL=http://weibo-bypy:8000
+    networks:
+      - weibo-network
+    depends_on:
+      - weibo-bypy
+
+  # bypy上传服务
+  weibo-bypy:
+    build:
+      context: .
+      dockerfile: Dockerfile.bypy
+    container_name: weibo-watchdog-bypy
+    restart: unless-stopped
+    volumes:
+      - ./data:/app/data
+      - ./cache:/app/cache
+      - ./src:/app/src
+      - ./config:/app/config
+      - .env:/app/.env
+    environment:
+      - TZ=Asia/Shanghai
+    networks:
+      - weibo-network
+
+networks:
+  weibo-network:
+    driver: bridge 

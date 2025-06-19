@@ -1,0 +1,4 @@
+FROM weibo-watchdog-base:latest
+
+# 设置默认命令 - 运行主程序
+CMD ["uv", "run", "src/main.py"] 

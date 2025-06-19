@@ -556,6 +556,20 @@ wheels = [
 ]
 
 [[package]]
+name = "pydantic-settings"
+version = "2.9.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pydantic" },
+    { name = "python-dotenv" },
+    { name = "typing-inspection" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/67/1d/42628a2c33e93f8e9acbde0d5d735fa0850f3e6a2f8cb1eb6c40b9a732ac/pydantic_settings-2.9.1.tar.gz", hash = "sha256:c509bf79d27563add44e8446233359004ed85066cd096d8b510f715e6ef5d268", size = 163234, upload-time = "2025-04-18T16:44:48.265Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/b6/5f/d6d641b490fd3ec2c4c13b4244d68deea3a1b970a97be64f34fb5504ff72/pydantic_settings-2.9.1-py3-none-any.whl", hash = "sha256:59b4f431b1defb26fe620c71a7d3968a710d719f5f4cdbbdb7926edeb770f6ef", size = 44356, upload-time = "2025-04-18T16:44:46.617Z" },
+]
+
+[[package]]
 name = "pyee"
 version = "13.0.0"
 source = { registry = "https://pypi.org/simple" }
@@ -619,6 +633,15 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/18/99/668cade231f434aaa59bbfbf49469068d2ddd945000621d3d165d2e7dd7b/pytest_cov-6.2.1.tar.gz", hash = "sha256:25cc6cc0a5358204b8108ecedc51a9b57b34cc6b8c967cc2c01a4e00d8a67da2", size = 69432, upload-time = "2025-06-12T10:47:47.684Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/bc/16/4ea354101abb1287856baa4af2732be351c7bee728065aed451b678153fd/pytest_cov-6.2.1-py3-none-any.whl", hash = "sha256:f5bc4c23f42f1cdd23c70b1dab1bbaef4fc505ba950d53e0081d0730dd7e86d5", size = 24644, upload-time = "2025-06-12T10:47:45.932Z" },
+]
+
+[[package]]
+name = "python-dotenv"
+version = "1.1.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/88/2c/7bb1416c5620485aa793f2de31d3df393d3686aa8a8506d11e10e13c5baf/python_dotenv-1.1.0.tar.gz", hash = "sha256:41f90bc6f5f177fb41f53e87666db362025010eb28f60a01c9143bfa33a2b2d5", size = 39920, upload-time = "2025-03-25T10:14:56.835Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/1e/18/98a99ad95133c6a6e2005fe89faedf294a748bd5dc803008059409ac9b1e/python_dotenv-1.1.0-py3-none-any.whl", hash = "sha256:d7c01d9e2293916c18baf562d95698754b0dbbb5e74d457c45d4f6561fb9d55d", size = 20256, upload-time = "2025-03-25T10:14:55.034Z" },
 ]
 
 [[package]]
@@ -840,7 +863,7 @@ wheels = [
 
 [[package]]
 name = "weibobot"
-version = "1.2.0"
+version = "1.2.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiosqlite" },
@@ -856,9 +879,9 @@ dependencies = [
     { name = "socksio" },
     { name = "tortoise-orm" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/2b/76/fc399d676c51398a0ee3920c800653e132f053877e4ae3596265b251f52e/weibobot-1.2.0.tar.gz", hash = "sha256:2f10764a4c49e03c2a14d856495f37bee99921bca85ddf5dae068c8b9a49ef0c", size = 29272, upload-time = "2025-06-18T16:37:54.058Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/e1/b3/912aa4cc62c74db156fab6cff5b4d4506742fdb3e9f4274c025fabb8fdd8/weibobot-1.2.3.tar.gz", hash = "sha256:7b3d158d6eccbed9844d5a4a96a2f9315cf9c56e5c7e64f18d4d32afd2e17432", size = 29242, upload-time = "2025-06-19T15:29:50.713Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/1d/2a/752ae6638d096040fa09049b1001d857fcbdb55d04b65f5bda63e38aa0d2/weibobot-1.2.0-py3-none-any.whl", hash = "sha256:f394846ef29ed210020dac0c3bf82603a2b6337eca06440f57e5313a56445170", size = 32668, upload-time = "2025-06-18T16:37:53.139Z" },
+    { url = "https://files.pythonhosted.org/packages/b4/a3/29a18c362ab290a93fc5db72db364206a6da4d824018c8afed914ca930ed/weibobot-1.2.3-py3-none-any.whl", hash = "sha256:0e70d8e604f6642e7618a5e975f2af2df21fe767118af28d5d0f0229a124dab1", size = 32651, upload-time = "2025-06-19T15:29:48.704Z" },
 ]
 
 [package.optional-dependencies]
@@ -874,6 +897,7 @@ dependencies = [
     { name = "bypy" },
     { name = "fastapi" },
     { name = "httpx", extra = ["socks"] },
+    { name = "pydantic-settings" },
     { name = "tenacity" },
     { name = "tencentcloud-sdk-python-ims" },
     { name = "tortoise-orm" },
@@ -886,11 +910,12 @@ requires-dist = [
     { name = "bypy", specifier = ">=1.8.9" },
     { name = "fastapi", specifier = ">=0.115.13" },
     { name = "httpx", extras = ["socks"], specifier = ">=0.28.1" },
+    { name = "pydantic-settings", specifier = ">=2.9.1" },
     { name = "tenacity", specifier = ">=9.1.2" },
     { name = "tencentcloud-sdk-python-ims", specifier = ">=3.0.1394" },
     { name = "tortoise-orm", specifier = ">=0.25.1" },
     { name = "uvicorn", specifier = ">=0.34.3" },
-    { name = "weibobot", extras = ["screenshot"], specifier = ">=1.2.0" },
+    { name = "weibobot", extras = ["screenshot"], specifier = ">=1.2.3" },
 ]
 
 [[package]]

@@ -6,6 +6,7 @@ from pathlib import Path
 import shutil
 from multiprocessing import Process
 from config import setting
+import uvicorn
 
 app = FastAPI()
 
@@ -49,6 +50,8 @@ async def upload_process(path: str, remote_path: str):
     logger.info(f"启动多进程上传任务: {path} -> {remote_path}")
     p = Process(target=upload_in_process, args=(path, remote_path))
     p.start()
-    return {
-        "ok": 1
-    }
+    return {"ok": 1}
+
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=8000)

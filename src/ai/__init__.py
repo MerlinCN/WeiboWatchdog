@@ -20,7 +20,7 @@ async def dectection(weibo: Weibo) -> bool:
             return True
     if weibo.live_photo:
         for live_photo in weibo.live_photo:
-            if await video_classify(image_url=live_photo):
+            if await video_classify(video_url=live_photo):
                 return True
     if weibo.image_list():
         for image in weibo.image_list():

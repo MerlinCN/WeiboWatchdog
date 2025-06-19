@@ -1,0 +1,4 @@
+FROM weibo-watchdog-base:latest
+
+# 设置默认命令 - 运行bypy上传服务
+CMD ["uv", "run", "src/bypy_main.py"] 
