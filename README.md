@@ -52,8 +52,7 @@ BYPY_URL=http://localhost:8000
 ### 2. 微博配置
 
 在 `data/` 目录下放置：
-- `weibobot_cookies.json`：微博登录cookies文件
-- `bypy.conf`：百度云配置文件
+- `bypy.json`：百度云配置文件(用bypy info生成)
 
 ### 3. Docker部署（推荐）
 
