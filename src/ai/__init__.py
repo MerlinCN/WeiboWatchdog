@@ -6,15 +6,12 @@ from tencentcloud.common.exception.tencent_cloud_sdk_exception import (
 from tencentcloud.ims.v20201229 import ims_client, models
 from loguru import logger
 from config import setting
-import httpx
 import base64
 import json
-from hashlib import md5
 import os
 import asyncio
 import tempfile
 from typing import List
-from pathlib import Path
 
 
 async def dectection(weibo: Weibo) -> bool:

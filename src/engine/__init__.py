@@ -7,11 +7,16 @@ from config import setting
 import shutil
 import time
 import asyncio
-from typing import Dict, List, Optional
+from typing import List
 from dataclasses import dataclass
-from datetime import datetime
 from tortoise import Tortoise
-from models import RepostTask, RepostHistory
+from models import RepostTask, init_database
+from tenacity import (
+    retry,
+    stop_after_attempt,
+    wait_exponential,
+    retry_if_exception_type,
+)
 
 
 @dataclass
@@ -21,8 +26,6 @@ class RepostTaskData:
     weibo_mid: str
     content: str
     created_at: float
-    retry_count: int = 0
-    max_retries: int = 3
 
 
 class SpiderEngine:
@@ -31,19 +34,9 @@ class SpiderEngine:
         self.repost_interval = repost_interval  # 转发间隔（秒）
         self.last_repost_time = 0  # 上次转发时间
         self.repost_queue: List[RepostTaskData] = []
-        self.db_path = Path("weibo_bot.db")
-        self._start_repost_worker()
+        self.db_path = self.bot.db_path
 
-    async def _init_database(self):
-        """初始化Tortoise ORM数据库"""
-        try:
-            await Tortoise.init(
-                db_url=f"sqlite://{self.db_path}", modules={"models": ["models"]}
-            )
-            await Tortoise.generate_schemas()
-            logger.info("数据库初始化成功")
-        except Exception as e:
-            logger.error(f"数据库初始化失败: {e}")
+
 
     async def _load_queue(self):
         """从数据库加载转发队列"""
@@ -56,8 +49,6 @@ class SpiderEngine:
                     weibo_mid=task.weibo_mid,
                     content=task.content,
                     created_at=task.created_at,
-                    retry_count=task.retry_count,
-                    max_retries=task.max_retries,
                 )
                 for task in tasks
             ]
@@ -79,21 +70,17 @@ class SpiderEngine:
                     weibo_mid=task_data.weibo_mid,
                     content=task_data.content,
                     created_at=task_data.created_at,
-                    retry_count=task_data.retry_count,
-                    max_retries=task_data.max_retries,
                     status="pending",
                 )
         except Exception as e:
             logger.error(f"保存转发队列失败: {e}")
 
-    def _start_repost_worker(self):
-        """启动转发工作线程"""
-        asyncio.create_task(self._repost_worker())
+        
 
     async def _repost_worker(self):
         """转发工作线程，处理队列中的转发任务"""
         # 初始化数据库
-        await self._init_database()
+        await init_database(self.db_path)
         await self._load_queue()
 
         while True:
@@ -117,23 +104,25 @@ class SpiderEngine:
                 logger.error(f"转发工作线程出错: {e}")
                 await asyncio.sleep(5)
 
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=4, max=10),
+        retry=retry_if_exception_type(Exception),
+        before_sleep=lambda retry_state: logger.warning(
+            f"转发微博失败，第 {retry_state.attempt_number} 次重试: {retry_state.outcome.exception()}"
+        ),
+    )
     async def _execute_repost(self, task: RepostTaskData):
         """执行转发任务"""
         try:
-            await self.bot.repost_weibo(task.weibo_mid, content=task.content)
-            logger.info(f"成功转发微博 {task.weibo_mid}")
+            if setting.mode == "prod":
+                await self.bot.repost_weibo(task.weibo_mid, content=task.content)
+                logger.info(f"成功转发微博 {task.weibo_mid}")
+            else:
+                logger.info(f"成功转发微博 {task.weibo_mid}")
         except Exception as e:
             logger.error(f"转发微博 {task.weibo_mid} 失败: {e}")
-            # 如果转发失败且未超过重试次数，重新加入队列
-            if task.retry_count < task.max_retries:
-                task.retry_count += 1
-                task.created_at = time.time()  # 更新创建时间
-                self.repost_queue.append(task)
-                logger.info(
-                    f"转发任务 {task.weibo_mid} 重新加入队列，重试次数: {task.retry_count}"
-                )
-            else:
-                logger.error(f"转发任务 {task.weibo_mid} 达到最大重试次数，放弃转发")
+            raise  # 重新抛出异常，让 tenacity 处理重试
 
     async def add_repost_task(self, weibo_mid: str, content: str):
         """添加转发任务到队列"""
@@ -143,16 +132,6 @@ class SpiderEngine:
         self.repost_queue.append(task)
         await self._save_queue()
         logger.info(f"添加转发任务到队列: {weibo_mid}")
-
-    def get_queue_status(self) -> Dict:
-        """获取队列状态信息"""
-        return {
-            "queue_size": len(self.repost_queue),
-            "last_repost_time": self.last_repost_time,
-            "repost_interval": self.repost_interval,
-            "next_repost_available": time.time() - self.last_repost_time
-            >= self.repost_interval,
-        }
 
     async def close(self):
         """关闭数据库连接"""
@@ -195,7 +174,7 @@ class SpiderEngine:
     async def dump_post(self, weibo: Weibo) -> Path | None:
         # 初始化路径和变量
         save_path = (
-            Path("wbd") / f"{weibo.user.mid}_{weibo.user.screen_name}" / weibo.mid
+            Path("cache") / f"{weibo.user.mid}_{weibo.user.screen_name}" / weibo.mid
         )
         threshold = 1e6 * 0.3  # 图片大小阈值 300kb
         max_image_size = 0
@@ -253,6 +232,11 @@ class SpiderEngine:
             shutil.rmtree(save_path)
             return None
 
+    async def clean_cache(self, path: Path):
+        if path.exists():
+            shutil.rmtree(path)
+        logger.info(f"清除缓存 {path}")
+
     async def pre_detection(self, weibo: Weibo) -> Weibo | None:
         # 确定要处理的微博对象
         target_weibo = weibo.retweeted_status if weibo.retweeted_status else weibo
@@ -286,3 +270,11 @@ class SpiderEngine:
             return target_weibo
 
         return None
+
+    def run(self):
+        loop = asyncio.get_event_loop()
+        try:
+            loop.create_task(self._repost_worker())
+            loop.run_until_complete(self.bot.lifecycle())
+        except KeyboardInterrupt:
+            loop.close()

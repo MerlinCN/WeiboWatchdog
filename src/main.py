@@ -1,5 +1,6 @@
 import random
-
+import asyncio
+from pathlib import Path
 
 from WeiboBot import Bot
 from WeiboBot.model import Weibo, Comment
@@ -8,8 +9,9 @@ from const import COMMENTS
 from loguru import logger
 from ai import dectection
 from config import setting
+import httpx
 
-bot = Bot()
+bot = Bot(cookies=Path("data")/ "weibobot_cookies.json",db_path=Path("data")/"weibo_bot.db")
 wd = SpiderEngine(bot, repost_interval=setting.repost_interval)
 
 
@@ -19,6 +21,15 @@ def select_comment(weibo: Weibo):
 
     comment = random.choice(COMMENTS) * random.randint(1, 3)
     return comment
+
+
+async def upload_file(file_path: Path, remote_path: Path):
+    async with httpx.AsyncClient() as client:
+        url = setting.bypy_url + "/upload"
+        params = {"path": str(file_path), "remote_path": str(remote_path)}
+        response = await client.get(url, params=params)
+        response.raise_for_status()
+        logger.info(f"上传文件 {file_path}")
 
 
 @bot.onMentionCmt
@@ -47,13 +58,22 @@ async def on_new_weibo(_weibo: Weibo):
         weibo = await wd.pre_detection(_weibo)
         if not weibo:
             return
+
         if bot.is_weibo_repost(weibo.mid) is True:
             logger.info(f"已经转发过微博 {weibo.detail_url()}")
             return
         result = await dectection(weibo)
+        file_path = (
+            Path("cache") / f"{weibo.user.mid}_{weibo.user.screen_name}" / weibo.mid
+        )
         if not result:
             logger.info(f"微博 {weibo.detail_url()} 未检测到内容")
+            await wd.clean_cache(file_path)
             return
+        remote_path = (
+            Path("wbd") / f"{weibo.user.mid}_{weibo.user.screen_name}" / weibo.mid
+        )
+        await upload_file(file_path, remote_path)
         comment = select_comment(weibo)
         await wd.add_repost_task(weibo.mid, comment)
         logger.info(f"结束处理微博 {weibo.detail_url()}")
@@ -63,16 +83,9 @@ async def on_new_weibo(_weibo: Weibo):
         )
 
 
-async def cleanup():
-    """清理资源"""
-    await wd.close()
-
-
 if __name__ == "__main__":
     try:
-        bot.run()
+        wd.run()
     except KeyboardInterrupt:
         logger.info("正在关闭程序...")
-        import asyncio
-
-        asyncio.run(cleanup())
+        asyncio.run(wd.close())

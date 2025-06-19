@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from pathlib import Path
 import shutil
 from multiprocessing import Process
+from config import setting
 
 app = FastAPI()
 
@@ -12,7 +13,7 @@ app = FastAPI()
 def upload_to_bypy(path: str, remote_path: str):
     """在后台线程中执行上传任务"""
     try:
-        bp = ByPy()
+        bp = ByPy(configdir=setting.bypy_config_dir)
         path_obj = Path(path)
         if not path_obj.exists():
             logger.error(f"文件不存在: {path}")
@@ -48,3 +49,6 @@ async def upload_process(path: str, remote_path: str):
     logger.info(f"启动多进程上传任务: {path} -> {remote_path}")
     p = Process(target=upload_in_process, args=(path, remote_path))
     p.start()
+    return {
+        "ok": 1
+    }

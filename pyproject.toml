@@ -6,8 +6,9 @@ dependencies = [
     "bypy>=1.8.9",
     "fastapi>=0.115.13",
     "httpx[socks]>=0.28.1",
+    "tenacity>=9.1.2",
     "tencentcloud-sdk-python-ims>=3.0.1394",
-    "tortoise-orm[aiosqlite]>=0.25.1",
+    "tortoise-orm>=0.25.1",
     "uvicorn>=0.34.3",
     "weibobot[screenshot]>=1.2.0",
 ]

@@ -118,10 +118,14 @@ cython_debug/
 *.db
 .idea/*
 *.pyc
-Data/*
-Video/*
-Log/*
+cache/*
+!cache/.gitkeep
+
+data/*
+!data/.gitkeep
 *.out
 *.json
 
 .env
+*.db*
+qrcode.png
