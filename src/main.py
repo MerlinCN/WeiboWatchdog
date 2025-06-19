@@ -54,7 +54,7 @@ async def on_mention_cmt(cmt: Comment):
         logger.error(f"处理微博 {cmt.status.detail_url()} 失败: {e} \n{cmt.metadata}")
 
 
-# @bot.onNewWeibo()
+@bot.onNewWeibo()
 async def on_new_weibo(_weibo: Weibo):
     try:
         logger.info(f"开始处理微博 {_weibo.detail_url()}")
